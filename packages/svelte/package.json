@@ -1,0 +1,26 @@
+{
+  "name": "@tts2go/svelte",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --external svelte",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --external svelte --watch"
+  },
+  "files": ["dist"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@tts2go/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "svelte": ">=4.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.0",
+    "svelte": "^5.0.0"
+  }
+}
