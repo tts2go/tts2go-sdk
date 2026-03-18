@@ -1,5 +1,11 @@
 # @tts2go/core
 
+## 0.3.0
+
+### Minor Changes
+
+- update sdk
+
 ## 0.2.0
 
 ### Minor Changes

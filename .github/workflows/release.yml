@@ -29,9 +29,6 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Version packages
-        run: pnpm exec changeset version
-
       - name: Setup npm auth
         run: echo '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$HOME/.npmrc"
 

@@ -1,5 +1,16 @@
 # @tts2go/vue
 
+## 0.3.0
+
+### Minor Changes
+
+- update sdk
+
+### Patch Changes
+
+- Updated dependencies
+  - @tts2go/core@0.3.0
+
 ## 0.2.0
 
 ### Minor Changes

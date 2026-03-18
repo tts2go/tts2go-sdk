@@ -1,8 +1,8 @@
 # Releasing
 
-All five packages (`@tts2go/core`, `@tts2go/react`, `@tts2go/vue`, `@tts2go/svelte`, `@tts2go/vanilla`) are versioned and released together. Publishing is fully automated via GitHub Actions when code is pushed to `main`.
+All five packages (`@tts2go/core`, `@tts2go/react`, `@tts2go/vue`, `@tts2go/svelte`, `@tts2go/vanilla`) are versioned and released together. Versioning is done locally; CI only builds and publishes to npm.
 
-## Before you merge
+## Before you push
 
 ### 1. Create a changeset
 
@@ -18,7 +18,7 @@ This interactive prompt will ask you:
 - **Bump type?** — `patch` (bug fix), `minor` (new feature), or `major` (breaking change).
 - **Summary** — A short description of the change (this becomes the changelog entry).
 
-This creates a markdown file in `.changeset/` (e.g. `.changeset/cool-feature.md`). **Commit this file with your PR.**
+This creates a markdown file in `.changeset/` (e.g. `.changeset/cool-feature.md`).
 
 A changeset file looks like this:
 
@@ -34,37 +34,41 @@ A changeset file looks like this:
 Description of what changed.
 ```
 
-### 2. Verify your PR passes CI
+### 2. Apply the version bump
 
-The CI workflow runs on every PR to `main`. It builds all packages and runs the `@tts2go/core` test suite. Make sure it's green before merging.
+```sh
+pnpm changeset version
+```
 
-### 3. Do NOT manually edit version numbers
+This reads the `.changeset/*.md` files, bumps all `package.json` versions, updates changelogs, and deletes the consumed changeset files.
 
-You do **not** need to update `version` fields in any `package.json`. The release workflow handles this automatically using the changeset files.
+### 3. Commit and push
 
-## What happens on merge
+Commit the version bumps (updated `package.json` files, changelogs, and deleted changeset files) and push to `main`.
 
-When your PR is merged to `main`, the release workflow (`.github/workflows/release.yml`) runs automatically:
+## What happens on push
+
+When you push to `main`, the release workflow (`.github/workflows/release.yml`) runs automatically:
 
 1. Installs dependencies and builds all packages
-2. Runs `changeset version` — reads the `.changeset/*.md` files, bumps all `package.json` versions, and deletes the consumed changeset files
-3. Publishes all packages to npm via `pnpm -r publish --no-git-checks`
+2. Publishes all packages to npm via `pnpm -r publish --no-git-checks`
 
-If there are no pending changesets, the workflow is a no-op (nothing gets published).
+If the version on npm already matches the version in `package.json`, publish is a no-op for that package.
 
 ## Quick reference
 
 | What | Where |
 |---|---|
 | Add a changeset | `pnpm changeset` |
+| Apply version bump | `pnpm changeset version` |
 | Changeset config | `.changeset/config.json` |
 | Release workflow | `.github/workflows/release.yml` |
 | CI workflow | `.github/workflows/ci.yml` |
 | NPM auth | `NPM_TOKEN` GitHub Actions secret |
-| Package versions | Each `packages/*/package.json` (managed by changesets) |
+| Package versions | Each `packages/*/package.json` (managed locally via changesets) |
 
 ## Troubleshooting
 
 - **`E403` on publish** — The `NPM_TOKEN` secret is expired or lacks publish permissions. Generate a new granular access token on npmjs.com for the `tts2go` account and update the GitHub Actions secret.
-- **Packages not publishing** — Ensure there is at least one `.changeset/*.md` file (other than `config.json`) committed. No changeset = no version bump = no publish.
+- **Packages not publishing** — Make sure you ran `pnpm changeset version` locally and committed the resulting version bumps before pushing. CI does not run `changeset version`.
 - **Version mismatch between packages** — All packages are in a `fixed` group in `.changeset/config.json`, so they should always share the same version. If they drift, run `pnpm changeset version` locally to reconcile.
