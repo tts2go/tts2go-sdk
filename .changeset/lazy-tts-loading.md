@@ -1,7 +1,8 @@
 ---
+"@tts2go/core": minor
 "@tts2go/react": minor
 "@tts2go/vue": minor
-"@tts2go/svelte": patch
+"@tts2go/svelte": minor
 "@tts2go/vanilla": minor
 ---
 
