@@ -9,64 +9,32 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    env:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
 
-      # registry-url makes setup-node write an .npmrc that uses NODE_AUTH_TOKEN
-      # for auth. This is required so pnpm changeset publish can authenticate
-      # when publishing each package to the npm registry.
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
-          registry-url: 'https://registry.npmjs.org'
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Check for changesets
-        id: changesets
-        run: |
-          if ls .changeset/*.md 1>/dev/null 2>&1 && [ "$(ls .changeset/*.md | grep -v README.md | wc -l)" -gt 0 ]; then
-            echo "has_changesets=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_changesets=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Version packages
-        if: steps.changesets.outputs.has_changesets == 'true'
-        run: pnpm changeset version
-
       - name: Build
-        if: steps.changesets.outputs.has_changesets == 'true'
         run: pnpm build
 
-      # NODE_AUTH_TOKEN is required here — pnpm changeset publish shells out to
-      # npm publish for each package, and npm resolves auth from the .npmrc that
-      # setup-node created (which references $NODE_AUTH_TOKEN). Without this env
-      # var the publish will 403.
-      - name: Publish to npm
-        if: steps.changesets.outputs.has_changesets == 'true'
-        run: pnpm changeset publish
+      - name: Setup npm auth
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > "$HOME/.npmrc"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Commit and push version bumps
-        if: steps.changesets.outputs.has_changesets == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Version Packages" || exit 0
-          git push
-          git push --tags
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish packages
+        run: pnpm -r publish --no-git-checks
