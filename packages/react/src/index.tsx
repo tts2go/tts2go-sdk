@@ -1,4 +1,4 @@
-export { TTS2GoProvider, useTTS2GoClient } from "./TTS2GoProvider";
+export { TTS2GoProvider, useTTS2GoClient, useTTS2GoContext } from "./TTS2GoProvider";
 export { TTSButton } from "./TTSButton";
 export { useTTS } from "./useTTS";
 export type { TTSButtonProps } from "./TTSButton";

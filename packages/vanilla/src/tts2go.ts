@@ -63,17 +63,6 @@ export class TTS2Go {
       emit("statusChange", s);
     }
 
-    // Check CDN immediately
-    client
-      .check(content, voiceId)
-      .then((result) => {
-        if (!destroyed && result.exists && result.url) {
-          url = result.url;
-          emit("urlReady", result.url);
-        }
-      })
-      .catch(() => {});
-
     async function playAudioFromUrl(audioUrl: string) {
       setStatus("playing");
       emit("play", undefined as any);
@@ -184,6 +173,11 @@ export class TTS2Go {
     };
 
     return instance;
+  }
+
+  /** Whether the browser supports native speech synthesis (fallback TTS) */
+  get browserTTSSupported(): boolean {
+    return hasSpeechSynthesis();
   }
 
   /** Get available voices */

@@ -1,5 +1,5 @@
 import { defineComponent, computed, h } from "vue";
-import { useTTS } from "./useTTS";
+import { useTTS, useTTS2GoContext } from "./useTTS";
 
 export default defineComponent({
   name: "TTSButton",
@@ -10,6 +10,7 @@ export default defineComponent({
     size: { type: Number, default: 24 },
   },
   setup(props) {
+    const { client, browserTTSSupported } = useTTS2GoContext();
     const { status, play, stop } = useTTS(props.content, props.voiceId);
 
     const iconSize = computed(() => props.size);
@@ -107,8 +108,12 @@ export default defineComponent({
       ]);
     }
 
-    return () =>
-      h("button", {
+    return () => {
+      if (client.hideTTSIfNoFallback && !browserTTSSupported) {
+        return null;
+      }
+
+      return h("button", {
         type: "button",
         role: "button",
         class: props.className,
@@ -118,5 +123,6 @@ export default defineComponent({
         title: ariaLabel.value,
         onClick: handleClick,
       }, [renderIcon()]);
+    };
   },
 });

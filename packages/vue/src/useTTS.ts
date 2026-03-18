@@ -1,33 +1,24 @@
-import { ref, computed, onMounted, onUnmounted, inject } from "vue";
+import { ref, computed, onUnmounted, inject } from "vue";
 import { AudioPlayer, type TTSStatus } from "@tts2go/core";
 import { hasSpeechSynthesis, speakFallback, stopFallback } from "@tts2go/core";
-import type { TTS2GoClient } from "@tts2go/core";
-import { TTS2GoKey } from "./plugin";
+import { TTS2GoKey, type TTS2GoContext } from "./plugin";
+
+export function useTTS2GoContext(): TTS2GoContext {
+  const ctx = inject(TTS2GoKey);
+  if (!ctx) {
+    throw new Error("useTTS2GoContext must be used within a component with TTS2GoPlugin installed");
+  }
+  return ctx;
+}
 
 export function useTTS(content: string, voiceId: string) {
-  const injectedClient = inject(TTS2GoKey);
-  if (!injectedClient) {
-    throw new Error("useTTS must be used within a component with TTS2GoPlugin installed");
-  }
-  const client = injectedClient;
+  const { client } = useTTS2GoContext();
 
   const status = ref<TTSStatus>("idle");
   const url = ref<string | null>(null);
   const error = ref<string | null>(null);
   let player: AudioPlayer | null = null;
   let mounted = true;
-
-  // Check CDN on mount
-  onMounted(async () => {
-    try {
-      const result = await client.check(content, voiceId);
-      if (mounted && result.exists && result.url) {
-        url.value = result.url;
-      }
-    } catch {
-      // Silently fail CDN check
-    }
-  });
 
   onUnmounted(() => {
     mounted = false;

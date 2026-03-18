@@ -21,30 +21,6 @@ export function useTTS(content: string, voiceId: string): UseTTSReturn {
   const playerRef = useRef<AudioPlayer | null>(null);
   const mountedRef = useRef(true);
 
-  // Check CDN on mount
-  useEffect(() => {
-    mountedRef.current = true;
-    let cancelled = false;
-
-    async function checkCDN() {
-      try {
-        const result = await client.check(content, voiceId);
-        if (!cancelled && result.exists && result.url) {
-          setUrl(result.url);
-        }
-      } catch {
-        // Silently fail CDN check
-      }
-    }
-
-    checkCDN();
-
-    return () => {
-      cancelled = true;
-      mountedRef.current = false;
-    };
-  }, [client, content, voiceId]);
-
   // Cleanup player on unmount
   useEffect(() => {
     return () => {

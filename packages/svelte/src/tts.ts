@@ -19,15 +19,6 @@ export function createTTS(client: TTS2GoClient, content: string, voiceId: string
   let player: AudioPlayer | null = null;
   let destroyed = false;
 
-  // Check CDN immediately
-  client.check(content, voiceId).then((result) => {
-    if (!destroyed && result.exists && result.url) {
-      url.set(result.url);
-    }
-  }).catch(() => {
-    // Silently fail CDN check
-  });
-
   async function playAudioFromUrl(audioUrl: string) {
     status.set("playing");
     player = new AudioPlayer();

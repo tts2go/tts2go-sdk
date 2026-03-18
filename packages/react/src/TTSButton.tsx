@@ -1,6 +1,7 @@
 "use client";
 import type { CSSProperties } from "react";
 import { useTTS } from "./useTTS";
+import { useTTS2GoContext } from "./TTS2GoProvider";
 
 export interface TTSButtonProps {
   content: string;
@@ -118,7 +119,12 @@ function getAriaLabel(status: string): string {
 }
 
 export function TTSButton({ content, voiceId, className, size = 24 }: TTSButtonProps) {
+  const { client, browserTTSSupported } = useTTS2GoContext();
   const { status, play, stop, pause } = useTTS(content, voiceId);
+
+  if (client.hideTTSIfNoFallback && !browserTTSSupported) {
+    return null;
+  }
 
   function handleClick() {
     switch (status) {
