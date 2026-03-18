@@ -1,0 +1,16 @@
+# @tts2go/vue
+
+## 0.2.0
+
+### Minor Changes
+
+- 52c60d1: Remove mount-time HEAD requests across all framework packages. TTS audio is now fetched lazily on first play instead of eagerly checking the CDN on mount/creation. Vue and Vanilla packages also gain browser TTS support detection (`useTTS2GoContext` composable for Vue, `browserTTSSupported` getter for Vanilla) to allow hiding TTS buttons when no fallback is available.
+- 933d4ed: update logic
+- ceed128: this is a minor bump
+
+### Patch Changes
+
+- Updated dependencies [52c60d1]
+- Updated dependencies [933d4ed]
+- Updated dependencies [ceed128]
+  - @tts2go/core@0.2.0

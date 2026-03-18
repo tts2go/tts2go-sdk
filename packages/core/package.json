@@ -1,6 +1,6 @@
 {
   "name": "@tts2go/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -9,7 +9,9 @@
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
     "test": "vitest run"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "publishConfig": {
     "access": "public"
   },
