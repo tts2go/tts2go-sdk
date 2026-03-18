@@ -33,11 +33,9 @@ jobs:
         run: pnpm exec changeset version
 
       - name: Setup npm auth
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
-          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > "$HOME/.npmrc"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: echo '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$HOME/.npmrc"
 
       - name: Publish packages
         run: pnpm -r publish --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
