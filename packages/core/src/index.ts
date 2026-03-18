@@ -4,7 +4,7 @@ export { AudioPlayer } from "./audio";
 export { hasSpeechSynthesis, speakFallback, stopFallback } from "./fallback";
 export { sdkFetch } from "./api";
 export type { APIConfig } from "./api";
-export type { TTS2GoConfig, Voice, CheckResponse, RequestResponse, TTSStatus, PollOptions, PollResult } from "./types";
+export type { TTS2GoConfig, Voice, CheckResponse, RequestResponse, TTSStatus } from "./types";
 
 export function createHash(input: string): string {
   return sha256(input);

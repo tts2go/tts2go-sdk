@@ -87,8 +87,6 @@ describe("TTS2GoClient", () => {
 
       client.on("statusChange", handler);
 
-      // Trigger an event through requestAndPoll (which calls emit internally)
-      // Instead, we test via check which triggers "loading" through requestAndPoll
       // Since emit is private, we test indirectly — ensure on/off don't throw
       expect(() => client.on("statusChange", handler)).not.toThrow();
       expect(() => client.off("statusChange", handler)).not.toThrow();

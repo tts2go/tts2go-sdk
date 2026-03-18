@@ -1,4 +1,4 @@
-import type { TTS2GoConfig, CheckResponse, RequestResponse, Voice, TTSStatus, PollOptions, PollResult } from "./types";
+import type { TTS2GoConfig, CheckResponse, RequestResponse, Voice, TTSStatus } from "./types";
 import { buildCDNUrl } from "./cdn";
 import { sdkFetch } from "./api";
 
@@ -54,36 +54,6 @@ export class TTS2GoClient {
     );
   }
 
-  async requestAndPoll(
-    content: string,
-    voiceId: string,
-    opts?: PollOptions
-  ): Promise<PollResult> {
-    const pollInterval = opts?.pollInterval ?? 1500;
-    const maxAttempts = opts?.maxAttempts ?? 20;
-
-    // 1. Check CDN first
-    this.emit("statusChange", "loading");
-    const existing = await this.check(content, voiceId);
-    if (existing.exists && existing.url) {
-      return { url: existing.url, status: "ready" };
-    }
-
-    // 2. Make generation request
-    await this.request(content, voiceId);
-
-    // 3. Poll CDN until available
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      await sleep(pollInterval);
-      const result = await this.check(content, voiceId);
-      if (result.exists && result.url) {
-        return { url: result.url, status: "ready" };
-      }
-    }
-
-    throw new Error("Audio generation timed out");
-  }
-
   on<K extends keyof EventMap>(event: K, callback: (value: EventMap[K]) => void): void {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
@@ -106,8 +76,4 @@ export class TTS2GoClient {
   get hideTTSIfNoFallback(): boolean {
     return this.config.hideTTSIfNoFallback;
   }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

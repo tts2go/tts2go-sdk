@@ -52,16 +52,18 @@ export function useTTS(content: string, voiceId: string) {
         return;
       }
 
+      // Try to play directly from CDN
       status.value = "loading";
-      try {
-        const result = await client.requestAndPoll(content, voiceId);
-        if (!mounted) return;
+      const cdnUrl = client.getCDNUrl(content, voiceId);
 
-        url.value = result.url;
-        await playAudioFromUrl(result.url);
-      } catch (err) {
+      player = new AudioPlayer();
+      player.onEnded = () => {
+        if (mounted) status.value = "idle";
+      };
+      player.onError = () => {
         if (!mounted) return;
-
+        // Audio failed (likely 404) — fire request and use browser TTS
+        client.request(content, voiceId).catch(() => {});
         if (hasSpeechSynthesis()) {
           status.value = "fallback";
           speakFallback(content);
@@ -71,7 +73,27 @@ export function useTTS(content: string, voiceId: string) {
           }, estimatedDuration);
         } else {
           status.value = "error";
-          error.value = err instanceof Error ? err.message : "TTS generation failed";
+          error.value = "TTS not available";
+        }
+      };
+
+      try {
+        status.value = "playing";
+        url.value = cdnUrl;
+        await player.play(cdnUrl);
+      } catch {
+        if (!mounted) return;
+        client.request(content, voiceId).catch(() => {});
+        if (hasSpeechSynthesis()) {
+          status.value = "fallback";
+          speakFallback(content);
+          const estimatedDuration = Math.max(2000, content.length * 60);
+          setTimeout(() => {
+            if (mounted) status.value = "idle";
+          }, estimatedDuration);
+        } else {
+          status.value = "error";
+          error.value = "TTS not available";
         }
       }
     } catch (err) {

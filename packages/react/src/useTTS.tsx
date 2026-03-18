@@ -53,45 +53,51 @@ export function useTTS(content: string, voiceId: string): UseTTSReturn {
         return;
       }
 
-      // Request and poll for generation
+      // Try to play directly from CDN
       setStatus("loading");
-      try {
-        const result = await client.requestAndPoll(content, voiceId);
+      const cdnUrl = client.getCDNUrl(content, voiceId);
+
+      const player = new AudioPlayer();
+      playerRef.current = player;
+
+      player.onEnded = () => {
+        if (mountedRef.current) setStatus("idle");
+      };
+      player.onError = () => {
         if (!mountedRef.current) return;
-
-        setUrl(result.url);
-        setStatus("playing");
-
-        const player = new AudioPlayer();
-        playerRef.current = player;
-
-        player.onEnded = () => {
-          if (mountedRef.current) setStatus("idle");
-        };
-        player.onError = () => {
-          if (mountedRef.current) {
-            setStatus("error");
-            setError("Audio playback failed");
-          }
-        };
-
-        await player.play(result.url);
-      } catch (err) {
-        if (!mountedRef.current) return;
-
-        // Fall back to browser speech synthesis
+        // Audio failed (likely 404) — fire request and use browser TTS
+        client.request(content, voiceId).catch(() => {});
         if (hasSpeechSynthesis()) {
           setStatus("fallback");
           speakFallback(content);
-          // speechSynthesis doesn't have a reliable end event in all browsers,
-          // so we set a timeout based on rough estimate
           const estimatedDuration = Math.max(2000, content.length * 60);
           setTimeout(() => {
             if (mountedRef.current) setStatus("idle");
           }, estimatedDuration);
         } else {
           setStatus("error");
-          setError(err instanceof Error ? err.message : "TTS generation failed");
+          setError("TTS not available");
+        }
+      };
+
+      try {
+        setStatus("playing");
+        setUrl(cdnUrl);
+        await player.play(cdnUrl);
+      } catch {
+        if (!mountedRef.current) return;
+        // Playback failed — fire request and use browser TTS
+        client.request(content, voiceId).catch(() => {});
+        if (hasSpeechSynthesis()) {
+          setStatus("fallback");
+          speakFallback(content);
+          const estimatedDuration = Math.max(2000, content.length * 60);
+          setTimeout(() => {
+            if (mountedRef.current) setStatus("idle");
+          }, estimatedDuration);
+        } else {
+          setStatus("error");
+          setError("TTS not available");
         }
       }
     } catch (err) {

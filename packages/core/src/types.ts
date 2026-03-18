@@ -25,13 +25,3 @@ export interface RequestResponse {
 }
 
 export type TTSStatus = "idle" | "loading" | "playing" | "paused" | "error" | "fallback";
-
-export interface PollOptions {
-  pollInterval?: number;
-  maxAttempts?: number;
-}
-
-export interface PollResult {
-  url: string;
-  status: string;
-}

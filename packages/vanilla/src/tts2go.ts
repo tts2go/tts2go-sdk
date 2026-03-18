@@ -5,7 +5,7 @@ import {
   speakFallback,
   stopFallback,
 } from "@tts2go/core";
-import type { TTS2GoConfig, TTSStatus, Voice, PollOptions } from "@tts2go/core";
+import type { TTS2GoConfig, TTSStatus, Voice } from "@tts2go/core";
 
 export type TTSEventMap = {
   statusChange: TTSStatus;
@@ -34,17 +34,14 @@ export interface TTSInstance {
 
 export class TTS2Go {
   private client: TTS2GoClient;
-  private pollOptions?: PollOptions;
 
-  constructor(config: TTS2GoConfig, pollOptions?: PollOptions) {
+  constructor(config: TTS2GoConfig) {
     this.client = new TTS2GoClient(config);
-    this.pollOptions = pollOptions;
   }
 
   /** Create a TTS instance bound to specific content and voice */
   create(content: string, voiceId: string): TTSInstance {
     const client = this.client;
-    const pollOptions = this.pollOptions;
 
     let status: TTSStatus = "idle";
     let url: string | null = null;
@@ -63,26 +60,19 @@ export class TTS2Go {
       emit("statusChange", s);
     }
 
-    async function playAudioFromUrl(audioUrl: string) {
-      setStatus("playing");
-      emit("play", undefined as any);
-      player = new AudioPlayer();
-
-      player.onEnded = () => {
-        if (!destroyed) setStatus("idle");
-      };
-      player.onError = () => {
-        if (!destroyed) {
-          error = "Audio playback failed";
-          setStatus("error");
-          emit("error", error);
-        }
-      };
-      player.onTimeUpdate = (currentTime, duration) => {
-        if (!destroyed) emit("timeUpdate", { currentTime, duration });
-      };
-
-      await player.play(audioUrl);
+    function useBrowserFallback() {
+      if (hasSpeechSynthesis()) {
+        setStatus("fallback");
+        speakFallback(content);
+        const estimatedDuration = Math.max(2000, content.length * 60);
+        setTimeout(() => {
+          if (!destroyed) setStatus("idle");
+        }, estimatedDuration);
+      } else {
+        error = "TTS not available";
+        setStatus("error");
+        emit("error", error);
+      }
     }
 
     const instance: TTSInstance = {
@@ -90,34 +80,54 @@ export class TTS2Go {
         error = null;
         try {
           if (url) {
-            await playAudioFromUrl(url);
+            setStatus("playing");
+            emit("play", undefined as any);
+            player = new AudioPlayer();
+            player.onEnded = () => {
+              if (!destroyed) setStatus("idle");
+            };
+            player.onError = () => {
+              if (!destroyed) {
+                error = "Audio playback failed";
+                setStatus("error");
+                emit("error", error);
+              }
+            };
+            player.onTimeUpdate = (currentTime, duration) => {
+              if (!destroyed) emit("timeUpdate", { currentTime, duration });
+            };
+            await player.play(url);
             return;
           }
 
+          // Try to play directly from CDN
           setStatus("loading");
+          const cdnUrl = client.getCDNUrl(content, voiceId);
           try {
-            const result = await client.requestAndPoll(content, voiceId, pollOptions);
-            if (destroyed) return;
+            player = new AudioPlayer();
+            player.onEnded = () => {
+              if (!destroyed) setStatus("idle");
+            };
+            player.onError = () => {
+              // Audio failed (likely 404) — fire request and use browser TTS
+              if (destroyed) return;
+              client.request(content, voiceId).catch(() => {});
+              useBrowserFallback();
+            };
+            player.onTimeUpdate = (currentTime, duration) => {
+              if (!destroyed) emit("timeUpdate", { currentTime, duration });
+            };
 
-            url = result.url;
-            emit("urlReady", result.url);
-            await playAudioFromUrl(result.url);
-          } catch (err) {
+            setStatus("playing");
+            emit("play", undefined as any);
+            url = cdnUrl;
+            emit("urlReady", cdnUrl);
+            await player.play(cdnUrl);
+          } catch {
             if (destroyed) return;
-
-            if (hasSpeechSynthesis()) {
-              setStatus("fallback");
-              speakFallback(content);
-              const estimatedDuration = Math.max(2000, content.length * 60);
-              setTimeout(() => {
-                if (!destroyed) setStatus("idle");
-              }, estimatedDuration);
-            } else {
-              const msg = err instanceof Error ? err.message : "TTS generation failed";
-              error = msg;
-              setStatus("error");
-              emit("error", msg);
-            }
+            // Playback failed — fire request and use browser TTS
+            client.request(content, voiceId).catch(() => {});
+            useBrowserFallback();
           }
         } catch (err) {
           if (destroyed) return;
