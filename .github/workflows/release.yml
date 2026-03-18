@@ -21,15 +21,16 @@ jobs:
 
       - uses: pnpm/action-setup@v4
 
+      # registry-url makes setup-node write an .npmrc that uses NODE_AUTH_TOKEN
+      # for auth. This is required so pnpm changeset publish can authenticate
+      # when publishing each package to the npm registry.
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
 
       - run: pnpm install --frozen-lockfile
-
-      - name: Configure npm auth
-        run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
 
       - name: Check for changesets
         id: changesets
@@ -48,9 +49,15 @@ jobs:
         if: steps.changesets.outputs.has_changesets == 'true'
         run: pnpm build
 
+      # NODE_AUTH_TOKEN is required here — pnpm changeset publish shells out to
+      # npm publish for each package, and npm resolves auth from the .npmrc that
+      # setup-node created (which references $NODE_AUTH_TOKEN). Without this env
+      # var the publish will 403.
       - name: Publish to npm
         if: steps.changesets.outputs.has_changesets == 'true'
         run: pnpm changeset publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Commit and push version bumps
         if: steps.changesets.outputs.has_changesets == 'true'
