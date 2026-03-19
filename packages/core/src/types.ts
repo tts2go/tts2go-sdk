@@ -19,7 +19,7 @@ export interface CheckResponse {
 }
 
 export interface RequestResponse {
-  id: string;
+  id?: string;
   status: string;
   message?: string;
 }

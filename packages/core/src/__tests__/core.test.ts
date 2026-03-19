@@ -45,7 +45,7 @@ describe("buildCDNUrl", () => {
   it("builds correct CDN URL format", () => {
     const url = buildCDNUrl("https://cdn.example.com", "proj-1", "Hello", "voice-1");
     const expectedHash = contentHash("Hello", "proj-1", "voice-1");
-    expect(url).toBe(`https://cdn.example.com/proj-1/${expectedHash}.mp3`);
+    expect(url).toBe(`https://cdn.example.com/proj-1/voice-1/${expectedHash}.mp3`);
   });
 
   it("ends with .mp3", () => {

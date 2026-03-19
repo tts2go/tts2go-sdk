@@ -1,5 +1,16 @@
 # @tts2go/react
 
+## 0.4.0
+
+### Minor Changes
+
+- upgrade
+
+### Patch Changes
+
+- Updated dependencies
+  - @tts2go/core@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes
