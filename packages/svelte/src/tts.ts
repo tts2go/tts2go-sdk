@@ -65,10 +65,7 @@ export function createTTS(client: TTS2GoClient, content: string, voiceId: string
         if (!destroyed) status.set("idle");
       };
       player.onError = () => {
-        if (destroyed) return;
-        // Audio failed (likely 404) — fire request and use browser TTS
-        client.request(content, voiceId).catch(() => {});
-        useBrowserFallback();
+        // No-op: catch block below handles fallback to avoid double playback
       };
 
       try {

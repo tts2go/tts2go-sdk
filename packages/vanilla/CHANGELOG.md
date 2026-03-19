@@ -1,5 +1,15 @@
 # @tts2go/vanilla
 
+## 0.5.0
+
+### Minor Changes
+
+- minor fix
+
+### Patch Changes
+
+- @tts2go/core@0.5.0
+
 ## 0.4.0
 
 ### Minor Changes

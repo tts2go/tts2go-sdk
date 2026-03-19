@@ -64,20 +64,7 @@ export function useTTS(content: string, voiceId: string): UseTTSReturn {
         if (mountedRef.current) setStatus("idle");
       };
       player.onError = () => {
-        if (!mountedRef.current) return;
-        // Audio failed (likely 404) — fire request and use browser TTS
-        client.request(content, voiceId).catch(() => {});
-        if (hasSpeechSynthesis()) {
-          setStatus("fallback");
-          speakFallback(content);
-          const estimatedDuration = Math.max(2000, content.length * 60);
-          setTimeout(() => {
-            if (mountedRef.current) setStatus("idle");
-          }, estimatedDuration);
-        } else {
-          setStatus("error");
-          setError("TTS not available");
-        }
+        // No-op: catch block below handles fallback to avoid double playback
       };
 
       try {

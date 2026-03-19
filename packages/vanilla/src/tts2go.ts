@@ -109,10 +109,7 @@ export class TTS2Go {
               if (!destroyed) setStatus("idle");
             };
             player.onError = () => {
-              // Audio failed (likely 404) — fire request and use browser TTS
-              if (destroyed) return;
-              client.request(content, voiceId).catch(() => {});
-              useBrowserFallback();
+              // No-op: catch block below handles fallback to avoid double playback
             };
             player.onTimeUpdate = (currentTime, duration) => {
               if (!destroyed) emit("timeUpdate", { currentTime, duration });
