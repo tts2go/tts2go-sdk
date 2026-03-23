@@ -6,7 +6,6 @@ import {
   type FallbackHandle,
   hasSpeechSynthesis,
   speakFallback,
-  stopFallback,
   acquireAudioLock,
   releaseAudioLock,
   generateInstanceId,
@@ -54,9 +53,7 @@ export function useTTS(content: string, voiceId: string): UseTTSReturn {
   }, []);
 
   const play = useCallback(async () => {
-    setError(null);
-
-    // Stop any existing playback from this instance
+    // Stop any existing playback
     playerRef.current?.stop();
     playerRef.current = null;
     fallbackRef.current?.cancel();
@@ -65,86 +62,56 @@ export function useTTS(content: string, voiceId: string): UseTTSReturn {
     // Stop any other playing TTS instance
     acquireAudioLock(instanceIdRef.current, stop);
 
-    try {
-      const targetUrl = url || client.getCDNUrl(content, voiceId);
-      const isFirstAttempt = !url;
+    setError(null);
+    setStatus("loading");
 
-      if (!isFirstAttempt) {
-        // We have a confirmed-working URL — play with error handling
-        setStatus("playing");
-        const player = new AudioPlayer();
-        playerRef.current = player;
+    const targetUrl = url || client.getCDNUrl(content, voiceId);
 
-        player.onEnded = () => {
+    let handled = false;
+    function handleFailure() {
+      if (handled || !mountedRef.current) return;
+      handled = true;
+      playerRef.current?.stop();
+      playerRef.current = null;
+      setUrl(null);
+
+      // Deferred fire-and-forget — fully decoupled from current context
+      setTimeout(() => {
+        try { client.request(content, voiceId).catch(() => {}); } catch {}
+      }, 0);
+
+      if (hasSpeechSynthesis()) {
+        setStatus("fallback");
+        fallbackRef.current = speakFallback(content, () => {
           if (mountedRef.current) {
             releaseAudioLock(instanceIdRef.current);
             setStatus("idle");
           }
-        };
-        player.onError = () => {
-          if (mountedRef.current) {
-            releaseAudioLock(instanceIdRef.current);
-            setStatus("error");
-            setError("Audio playback failed");
-          }
-        };
-
-        await player.play(targetUrl);
-        return;
+        });
+      } else {
+        releaseAudioLock(instanceIdRef.current);
+        setStatus("error");
+        setError("TTS not available");
       }
+    }
 
-      // First attempt — try CDN, fallback to browser TTS on failure
-      setStatus("loading");
-
+    try {
       const player = new AudioPlayer();
       playerRef.current = player;
 
-      let handled = false;
-      function handleCdnFailure() {
-        if (handled || !mountedRef.current) return;
-        handled = true;
-        player.stop();
-        playerRef.current = null;
-
-        // Fire-and-forget request so the audio is ready next time
-        try { client.request(content, voiceId).catch(() => {}); } catch {}
-
-        if (hasSpeechSynthesis()) {
-          setStatus("fallback");
-          fallbackRef.current = speakFallback(content, () => {
-            if (mountedRef.current) {
-              releaseAudioLock(instanceIdRef.current);
-              setStatus("idle");
-            }
-          });
-        } else {
-          releaseAudioLock(instanceIdRef.current);
-          setStatus("error");
-          setError("TTS not available");
-        }
-      }
-
       player.onEnded = () => {
         if (mountedRef.current) {
+          setUrl(targetUrl);
           releaseAudioLock(instanceIdRef.current);
           setStatus("idle");
         }
       };
-      player.onError = handleCdnFailure;
+      player.onError = handleFailure;
 
-      try {
-        setStatus("playing");
-        await player.play(targetUrl);
-        // CDN playback started successfully — cache the URL
-        if (mountedRef.current) setUrl(targetUrl);
-      } catch {
-        handleCdnFailure();
-      }
-    } catch (err) {
-      if (!mountedRef.current) return;
-      releaseAudioLock(instanceIdRef.current);
-      setStatus("error");
-      setError(err instanceof Error ? err.message : "Playback failed");
+      setStatus("playing");
+      await player.play(targetUrl);
+    } catch {
+      handleFailure();
     }
   }, [client, content, voiceId, url, stop]);
 
