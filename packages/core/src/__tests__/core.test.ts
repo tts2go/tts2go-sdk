@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createHash, TTS2GoClient, buildCDNUrl, contentHash } from "../index";
+import { acquireAudioLock, releaseAudioLock, generateInstanceId } from "../globalAudio";
+import { hasSpeechSynthesis } from "../fallback";
 
 describe("createHash (SHA-256)", () => {
   it("returns a 64-char hex string", () => {
@@ -101,6 +103,76 @@ describe("TTS2GoClient", () => {
       // After off, handler should not be called — but emit is private
       // At minimum, verify no errors
     });
+  });
+});
+
+describe("globalAudio", () => {
+  it("generateInstanceId returns unique IDs", () => {
+    const id1 = generateInstanceId();
+    const id2 = generateInstanceId();
+    expect(id1).not.toBe(id2);
+    expect(id1).toMatch(/^tts2go_\d+$/);
+  });
+
+  it("acquireAudioLock stops previous instance when a new one acquires", () => {
+    const stop1 = vi.fn();
+    const stop2 = vi.fn();
+
+    const id1 = generateInstanceId();
+    const id2 = generateInstanceId();
+
+    acquireAudioLock(id1, stop1);
+    acquireAudioLock(id2, stop2);
+
+    expect(stop1).toHaveBeenCalledOnce();
+    expect(stop2).not.toHaveBeenCalled();
+  });
+
+  it("acquireAudioLock does not self-stop when same ID re-acquires", () => {
+    const stop1 = vi.fn();
+    const id1 = generateInstanceId();
+
+    acquireAudioLock(id1, stop1);
+    acquireAudioLock(id1, stop1);
+
+    expect(stop1).not.toHaveBeenCalled();
+  });
+
+  it("releaseAudioLock clears state for matching ID", () => {
+    const stop1 = vi.fn();
+    const stop2 = vi.fn();
+
+    const id1 = generateInstanceId();
+    const id2 = generateInstanceId();
+
+    acquireAudioLock(id1, stop1);
+    releaseAudioLock(id1);
+
+    // After release, acquiring with id2 should NOT stop id1 again
+    acquireAudioLock(id2, stop2);
+    expect(stop1).not.toHaveBeenCalled();
+  });
+
+  it("releaseAudioLock ignores non-matching ID", () => {
+    const stop1 = vi.fn();
+    const id1 = generateInstanceId();
+    const id2 = generateInstanceId();
+
+    acquireAudioLock(id1, stop1);
+    releaseAudioLock(id2); // different ID — should not clear
+
+    const stop3 = vi.fn();
+    const id3 = generateInstanceId();
+    acquireAudioLock(id3, stop3);
+
+    // id1 was still active, so stop1 should be called
+    expect(stop1).toHaveBeenCalledOnce();
+  });
+});
+
+describe("hasSpeechSynthesis", () => {
+  it("returns false in test environment (no window.speechSynthesis)", () => {
+    expect(hasSpeechSynthesis()).toBe(false);
   });
 });
 

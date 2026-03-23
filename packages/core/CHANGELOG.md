@@ -1,5 +1,11 @@
 # @tts2go/core
 
+## 0.6.0
+
+### Minor Changes
+
+- updated error handling and added tests
+
 ## 0.5.0
 
 ## 0.4.0

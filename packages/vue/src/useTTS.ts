@@ -1,7 +1,17 @@
-import { ref, computed, onUnmounted, inject } from "vue";
-import { AudioPlayer, type TTSStatus } from "@tts2go/core";
-import { hasSpeechSynthesis, speakFallback, stopFallback } from "@tts2go/core";
+import { ref, computed, onUnmounted } from "vue";
+import {
+  AudioPlayer,
+  type TTSStatus,
+  type FallbackHandle,
+  hasSpeechSynthesis,
+  speakFallback,
+  stopFallback,
+  acquireAudioLock,
+  releaseAudioLock,
+  generateInstanceId,
+} from "@tts2go/core";
 import { TTS2GoKey, type TTS2GoContext } from "./plugin";
+import { inject } from "vue";
 
 export function useTTS2GoContext(): TTS2GoContext {
   const ctx = inject(TTS2GoKey);
@@ -18,83 +28,117 @@ export function useTTS(content: string, voiceId: string) {
   const url = ref<string | null>(null);
   const error = ref<string | null>(null);
   let player: AudioPlayer | null = null;
+  let fallbackHandle: FallbackHandle | null = null;
   let mounted = true;
+  const instanceId = generateInstanceId();
+
+  function stop() {
+    player?.stop();
+    player = null;
+    fallbackHandle?.cancel();
+    fallbackHandle = null;
+    releaseAudioLock(instanceId);
+    status.value = "idle";
+  }
 
   onUnmounted(() => {
     mounted = false;
     player?.stop();
     player = null;
+    fallbackHandle?.cancel();
+    fallbackHandle = null;
+    releaseAudioLock(instanceId);
   });
-
-  async function playAudioFromUrl(audioUrl: string) {
-    status.value = "playing";
-    player = new AudioPlayer();
-
-    player.onEnded = () => {
-      if (mounted) status.value = "idle";
-    };
-    player.onError = () => {
-      if (mounted) {
-        status.value = "error";
-        error.value = "Audio playback failed";
-      }
-    };
-
-    await player.play(audioUrl);
-  }
 
   async function play() {
     error.value = null;
 
+    // Stop any existing playback from this instance
+    player?.stop();
+    player = null;
+    fallbackHandle?.cancel();
+    fallbackHandle = null;
+
+    // Stop any other playing TTS instance
+    acquireAudioLock(instanceId, stop);
+
     try {
-      if (url.value) {
-        await playAudioFromUrl(url.value);
+      const targetUrl = url.value || client.getCDNUrl(content, voiceId);
+      const isFirstAttempt = !url.value;
+
+      if (!isFirstAttempt) {
+        // We have a confirmed-working URL — play with error handling
+        status.value = "playing";
+        player = new AudioPlayer();
+
+        player.onEnded = () => {
+          if (mounted) {
+            releaseAudioLock(instanceId);
+            status.value = "idle";
+          }
+        };
+        player.onError = () => {
+          if (mounted) {
+            releaseAudioLock(instanceId);
+            status.value = "error";
+            error.value = "Audio playback failed";
+          }
+        };
+
+        await player.play(targetUrl);
         return;
       }
 
-      // Try to play directly from CDN
+      // First attempt — try CDN, fallback to browser TTS on failure
       status.value = "loading";
-      const cdnUrl = client.getCDNUrl(content, voiceId);
 
       player = new AudioPlayer();
-      player.onEnded = () => {
-        if (mounted) status.value = "idle";
-      };
-      player.onError = () => {
-        // No-op: catch block below handles fallback to avoid double playback
-      };
 
-      try {
-        status.value = "playing";
-        url.value = cdnUrl;
-        await player.play(cdnUrl);
-      } catch {
-        if (!mounted) return;
-        client.request(content, voiceId).catch(() => {});
+      let handled = false;
+      function handleCdnFailure() {
+        if (handled || !mounted) return;
+        handled = true;
+        player?.stop();
+        player = null;
+
+        try { client.request(content, voiceId).catch(() => {}); } catch {}
+
         if (hasSpeechSynthesis()) {
           status.value = "fallback";
-          speakFallback(content);
-          const estimatedDuration = Math.max(2000, content.length * 60);
-          setTimeout(() => {
-            if (mounted) status.value = "idle";
-          }, estimatedDuration);
+          fallbackHandle = speakFallback(content, () => {
+            if (mounted) {
+              releaseAudioLock(instanceId);
+              status.value = "idle";
+            }
+          });
         } else {
+          releaseAudioLock(instanceId);
           status.value = "error";
           error.value = "TTS not available";
         }
       }
+
+      player.onEnded = () => {
+        if (mounted) {
+          releaseAudioLock(instanceId);
+          status.value = "idle";
+        }
+      };
+      player.onError = handleCdnFailure;
+
+      try {
+        status.value = "playing";
+        await player.play(targetUrl);
+        if (mounted) url.value = targetUrl;
+      } catch {
+        handleCdnFailure();
+      }
     } catch (err) {
       if (!mounted) return;
+      releaseAudioLock(instanceId);
       status.value = "error";
       error.value = err instanceof Error ? err.message : "Playback failed";
     }
-  }
-
-  function stop() {
-    player?.stop();
-    player = null;
-    stopFallback();
-    status.value = "idle";
   }
 
   function pause() {

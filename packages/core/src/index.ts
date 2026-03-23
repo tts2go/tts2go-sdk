@@ -2,6 +2,8 @@ export { TTS2GoClient } from "./client";
 export { buildCDNUrl, contentHash } from "./cdn";
 export { AudioPlayer } from "./audio";
 export { hasSpeechSynthesis, speakFallback, stopFallback } from "./fallback";
+export type { FallbackHandle } from "./fallback";
+export { acquireAudioLock, releaseAudioLock, generateInstanceId } from "./globalAudio";
 export { sdkFetch } from "./api";
 export type { APIConfig } from "./api";
 export type { TTS2GoConfig, Voice, CheckResponse, RequestResponse, TTSStatus } from "./types";

@@ -1,5 +1,16 @@
 # @tts2go/svelte
 
+## 0.6.0
+
+### Minor Changes
+
+- updated error handling and added tests
+
+### Patch Changes
+
+- Updated dependencies
+  - @tts2go/core@0.6.0
+
 ## 0.5.0
 
 ### Minor Changes

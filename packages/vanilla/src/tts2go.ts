@@ -4,8 +4,11 @@ import {
   hasSpeechSynthesis,
   speakFallback,
   stopFallback,
+  acquireAudioLock,
+  releaseAudioLock,
+  generateInstanceId,
 } from "@tts2go/core";
-import type { TTS2GoConfig, TTSStatus, Voice } from "@tts2go/core";
+import type { TTS2GoConfig, TTSStatus, Voice, FallbackHandle } from "@tts2go/core";
 
 export type TTSEventMap = {
   statusChange: TTSStatus;
@@ -47,7 +50,9 @@ export class TTS2Go {
     let url: string | null = null;
     let error: string | null = null;
     let player: AudioPlayer | null = null;
+    let fallbackHandle: FallbackHandle | null = null;
     let destroyed = false;
+    const instanceId = generateInstanceId();
 
     const listeners = new Map<keyof TTSEventMap, Set<(value: any) => void>>();
 
@@ -60,35 +65,39 @@ export class TTS2Go {
       emit("statusChange", s);
     }
 
-    function useBrowserFallback() {
-      if (hasSpeechSynthesis()) {
-        setStatus("fallback");
-        speakFallback(content);
-        const estimatedDuration = Math.max(2000, content.length * 60);
-        setTimeout(() => {
-          if (!destroyed) setStatus("idle");
-        }, estimatedDuration);
-      } else {
-        error = "TTS not available";
-        setStatus("error");
-        emit("error", error);
-      }
-    }
-
     const instance: TTSInstance = {
       async play() {
         error = null;
+
+        // Stop any existing playback from this instance
+        player?.stop();
+        player = null;
+        fallbackHandle?.cancel();
+        fallbackHandle = null;
+
+        // Stop any other playing TTS instance
+        acquireAudioLock(instanceId, instance.stop);
+
         try {
-          if (url) {
+          const targetUrl = url || client.getCDNUrl(content, voiceId);
+          const isFirstAttempt = !url;
+
+          if (!isFirstAttempt) {
+            // We have a confirmed-working URL — play with error handling
             setStatus("playing");
             emit("play", undefined as any);
             player = new AudioPlayer();
+
             player.onEnded = () => {
-              if (!destroyed) setStatus("idle");
+              if (!destroyed) {
+                releaseAudioLock(instanceId);
+                setStatus("idle");
+              }
             };
             player.onError = () => {
               if (!destroyed) {
                 error = "Audio playback failed";
+                releaseAudioLock(instanceId);
                 setStatus("error");
                 emit("error", error);
               }
@@ -96,40 +105,69 @@ export class TTS2Go {
             player.onTimeUpdate = (currentTime, duration) => {
               if (!destroyed) emit("timeUpdate", { currentTime, duration });
             };
-            await player.play(url);
+
+            await player.play(targetUrl);
             return;
           }
 
-          // Try to play directly from CDN
+          // First attempt — try CDN, fallback to browser TTS on failure
           setStatus("loading");
-          const cdnUrl = client.getCDNUrl(content, voiceId);
-          try {
-            player = new AudioPlayer();
-            player.onEnded = () => {
-              if (!destroyed) setStatus("idle");
-            };
-            player.onError = () => {
-              // No-op: catch block below handles fallback to avoid double playback
-            };
-            player.onTimeUpdate = (currentTime, duration) => {
-              if (!destroyed) emit("timeUpdate", { currentTime, duration });
-            };
 
+          player = new AudioPlayer();
+
+          let handled = false;
+          function handleCdnFailure() {
+            if (handled || destroyed) return;
+            handled = true;
+            player?.stop();
+            player = null;
+
+            try { client.request(content, voiceId).catch(() => {}); } catch {}
+
+            if (hasSpeechSynthesis()) {
+              setStatus("fallback");
+              fallbackHandle = speakFallback(content, () => {
+                if (!destroyed) {
+                  releaseAudioLock(instanceId);
+                  setStatus("idle");
+                }
+              });
+            } else {
+              error = "TTS not available";
+              releaseAudioLock(instanceId);
+              setStatus("error");
+              emit("error", error);
+            }
+          }
+
+          player.onEnded = () => {
+            if (!destroyed) {
+              releaseAudioLock(instanceId);
+              setStatus("idle");
+            }
+          };
+          player.onError = handleCdnFailure;
+          player.onTimeUpdate = (currentTime, duration) => {
+            if (!destroyed) emit("timeUpdate", { currentTime, duration });
+          };
+
+          try {
             setStatus("playing");
             emit("play", undefined as any);
-            url = cdnUrl;
-            emit("urlReady", cdnUrl);
-            await player.play(cdnUrl);
+            await player.play(targetUrl);
+            // CDN playback started successfully — cache the URL
+            if (!destroyed) {
+              url = targetUrl;
+              emit("urlReady", targetUrl);
+            }
           } catch {
-            if (destroyed) return;
-            // Playback failed — fire request and use browser TTS
-            client.request(content, voiceId).catch(() => {});
-            useBrowserFallback();
+            handleCdnFailure();
           }
         } catch (err) {
           if (destroyed) return;
           const msg = err instanceof Error ? err.message : "Playback failed";
           error = msg;
+          releaseAudioLock(instanceId);
           setStatus("error");
           emit("error", msg);
         }
@@ -138,7 +176,9 @@ export class TTS2Go {
       stop() {
         player?.stop();
         player = null;
-        stopFallback();
+        fallbackHandle?.cancel();
+        fallbackHandle = null;
+        releaseAudioLock(instanceId);
         setStatus("idle");
         emit("stop", undefined as any);
       },
