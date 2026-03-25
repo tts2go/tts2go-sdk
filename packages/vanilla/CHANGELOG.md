@@ -1,5 +1,16 @@
 # @tts2go/vanilla
 
+## 0.8.0
+
+### Minor Changes
+
+- updated documentation
+
+### Patch Changes
+
+- Updated dependencies
+  - @tts2go/core@0.8.0
+
 ## 0.7.0
 
 ### Minor Changes
