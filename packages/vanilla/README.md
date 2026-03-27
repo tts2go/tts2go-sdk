@@ -138,44 +138,15 @@ Returned by `create()` and `generate()`. Controls playback for a single piece of
 
 | Method / Property | Type | Description |
 |-------------------|------|-------------|
-| `play()` | `Promise<void>` | Start playback (CDN check, fallback, generation) |
+| `play()` | `Promise<void>` | Start playback (tries CDN, falls back to browser TTS, queues generation) |
 | `stop()` | `void` | Stop playback |
 | `pause()` | `void` | Pause playback |
 | `resume()` | `void` | Resume from pause |
-| `getStatus()` | `TTSStatus` | Current status synchronously |
-| `getUrl()` | `string \| null` | CDN URL once generated |
+| `getStatus()` | `TTSStatus` | Current status: `'idle'` \| `'loading'` \| `'playing'` \| `'paused'` \| `'error'` \| `'fallback'` |
+| `getUrl()` | `string \| null` | CDN URL after successful playback |
 | `getError()` | `string \| null` | Error message if failed |
 | `destroy()` | `void` | Clean up resources |
-| `on(event, callback)` | `void` | Subscribe to events |
-| `off(event, callback)` | `void` | Unsubscribe from events |
-
-### Events
-
-```javascript
-const instance = tts.create('Hello world', 'voice-id');
-
-instance.on('statusChange', (status) => {
-  console.log('Status:', status);
-  // 'idle' | 'loading' | 'playing' | 'paused' | 'error' | 'fallback'
-});
-
-instance.on('urlReady', (url) => {
-  console.log('CDN URL:', url);
-});
-
-instance.on('error', (message) => {
-  console.error('Error:', message);
-});
-
-instance.on('timeUpdate', ({ currentTime, duration }) => {
-  const progress = (currentTime / duration) * 100;
-  console.log(`${progress.toFixed(0)}%`);
-});
-
-instance.on('play', () => console.log('Started'));
-instance.on('pause', () => console.log('Paused'));
-instance.on('stop', () => console.log('Stopped'));
-```
+| `onStatusChange` | `((status: TTSStatus) => void) \| null` | Callback fired when status changes |
 
 ## Full Example
 
@@ -200,12 +171,12 @@ instance.on('stop', () => console.log('Stopped'));
     'voice-id'
   );
 
-  instance.on('statusChange', (status) => {
+  instance.onStatusChange = (status) => {
     statusEl.textContent = status;
     stopBtn.disabled = status !== 'playing';
     playBtn.disabled = status === 'loading';
     playBtn.textContent = status === 'loading' ? 'Loading...' : 'Play';
-  });
+  };
 
   playBtn.addEventListener('click', () => instance.play());
   stopBtn.addEventListener('click', () => instance.stop());

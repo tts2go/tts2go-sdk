@@ -9,18 +9,6 @@ import {
 } from "@tts2go/core";
 import type { TTS2GoConfig, TTSStatus, Voice, FallbackHandle } from "@tts2go/core";
 
-export type TTSEventMap = {
-  statusChange: TTSStatus;
-  urlReady: string;
-  error: string;
-  play: void;
-  pause: void;
-  stop: void;
-  timeUpdate: { currentTime: number; duration: number };
-};
-
-export type TTSEventCallback<K extends keyof TTSEventMap> = (value: TTSEventMap[K]) => void;
-
 export interface TTSInstance {
   play: () => Promise<void>;
   stop: () => void;
@@ -30,8 +18,7 @@ export interface TTSInstance {
   getUrl: () => string | null;
   getError: () => string | null;
   destroy: () => void;
-  on: <K extends keyof TTSEventMap>(event: K, cb: TTSEventCallback<K>) => void;
-  off: <K extends keyof TTSEventMap>(event: K, cb: TTSEventCallback<K>) => void;
+  onStatusChange: ((status: TTSStatus) => void) | null;
 }
 
 export class TTS2Go {
@@ -53,18 +40,14 @@ export class TTS2Go {
     let destroyed = false;
     const instanceId = generateInstanceId();
 
-    const listeners = new Map<keyof TTSEventMap, Set<(value: any) => void>>();
-
-    function emit<K extends keyof TTSEventMap>(event: K, value: TTSEventMap[K]) {
-      listeners.get(event)?.forEach((cb) => cb(value));
-    }
-
     function setStatus(s: TTSStatus) {
       status = s;
-      emit("statusChange", s);
+      instance.onStatusChange?.(s);
     }
 
     const instance: TTSInstance = {
+      onStatusChange: null,
+
       async play() {
         // Stop any existing playback
         player?.stop();
@@ -104,7 +87,6 @@ export class TTS2Go {
             error = "TTS not available";
             releaseAudioLock(instanceId);
             setStatus("error");
-            emit("error", error);
           }
         }
 
@@ -114,18 +96,13 @@ export class TTS2Go {
           player.onEnded = () => {
             if (!destroyed) {
               url = targetUrl;
-              emit("urlReady", targetUrl);
               releaseAudioLock(instanceId);
               setStatus("idle");
             }
           };
           player.onError = handleFailure;
-          player.onTimeUpdate = (currentTime, duration) => {
-            if (!destroyed) emit("timeUpdate", { currentTime, duration });
-          };
 
           setStatus("playing");
-          emit("play", undefined as any);
           await player.play(targetUrl);
         } catch {
           handleFailure();
@@ -139,14 +116,12 @@ export class TTS2Go {
         fallbackHandle = null;
         releaseAudioLock(instanceId);
         setStatus("idle");
-        emit("stop", undefined as any);
       },
 
       pause() {
         if (player?.isPlaying) {
           player.pause();
           setStatus("paused");
-          emit("pause", undefined as any);
         }
       },
 
@@ -154,7 +129,6 @@ export class TTS2Go {
         if (player?.isPaused) {
           player.resume();
           setStatus("playing");
-          emit("play", undefined as any);
         }
       },
 
@@ -165,16 +139,6 @@ export class TTS2Go {
       destroy() {
         destroyed = true;
         instance.stop();
-        listeners.clear();
-      },
-
-      on<K extends keyof TTSEventMap>(event: K, cb: TTSEventCallback<K>) {
-        if (!listeners.has(event)) listeners.set(event, new Set());
-        listeners.get(event)!.add(cb);
-      },
-
-      off<K extends keyof TTSEventMap>(event: K, cb: TTSEventCallback<K>) {
-        listeners.get(event)?.delete(cb);
       },
     };
 
