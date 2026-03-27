@@ -108,8 +108,8 @@ import { TTS2GoClient } from '@tts2go/core';
 const client = new TTS2GoClient({
   apiKey: string;       // Your API key (starts with tts_)
   projectId: string;    // Your project ID (UUID)
-  cdnBase?: string;     // Default: https://cdn.tts2go.dev
-  apiBase?: string;     // Default: https://api.tts2go.dev/api/v1
+  cdnBase?: string;     // Default: https://cdn.tts2go.com
+  apiBase?: string;     // Default: https://backend.tts2go.com/api/v1
 });
 ```
 
@@ -126,7 +126,7 @@ const client = new TTS2GoClient({
 import { AudioPlayer } from '@tts2go/core';
 
 const player = new AudioPlayer();
-await player.play('https://cdn.tts2go.dev/...');
+await player.play('https://cdn.tts2go.com/...');
 player.pause();
 player.resume();
 player.stop();
@@ -162,7 +162,7 @@ if (hasSpeechSynthesis()) {
 ```typescript
 import { buildCDNUrl, contentHash } from '@tts2go/core';
 
-const url = buildCDNUrl('https://cdn.tts2go.dev', projectId, content, voiceId);
+const url = buildCDNUrl('https://cdn.tts2go.com', projectId, content, voiceId);
 const hash = contentHash(content, projectId, voiceId);
 // URL pattern: {cdnBase}/{projectId}/{voiceId}/{hash}.mp3
 ```

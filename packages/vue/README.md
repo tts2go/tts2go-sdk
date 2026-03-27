@@ -131,8 +131,8 @@ Vue plugin that provides the TTS client globally via inject/provide.
 app.use(TTS2GoPlugin, {
   apiKey: string;       // Your API key
   projectId: string;    // Your project ID
-  cdnBase?: string;     // Default: https://cdn.tts2go.dev
-  apiBase?: string;     // Default: https://api.tts2go.dev/api/v1
+  cdnBase?: string;     // Default: https://cdn.tts2go.com
+  apiBase?: string;     // Default: https://backend.tts2go.com/api/v1
 });
 ```
 

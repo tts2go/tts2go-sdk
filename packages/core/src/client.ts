@@ -2,8 +2,8 @@ import type { TTS2GoConfig, CheckResponse, RequestResponse, Voice, TTSStatus } f
 import { buildCDNUrl } from "./cdn";
 import { sdkFetch } from "./api";
 
-const DEFAULT_CDN_BASE = "https://cdn.tts2go.dev";
-const DEFAULT_API_BASE = "https://api.tts2go.dev/api/v1";
+const DEFAULT_CDN_BASE = "https://cdn.tts2go.com";
+const DEFAULT_API_BASE = "https://backend.tts2go.com/api/v1";
 
 type EventMap = {
   statusChange: TTSStatus;

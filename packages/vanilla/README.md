@@ -120,8 +120,8 @@ const instance = await tts.generate('Hello world', 'voice-id');
 const tts = new TTS2Go({
   apiKey: string;       // Your API key (starts with tts_)
   projectId: string;    // Your project ID (UUID)
-  cdnBase?: string;     // Default: https://cdn.tts2go.dev
-  apiBase?: string;     // Default: https://api.tts2go.dev/api/v1
+  cdnBase?: string;     // Default: https://cdn.tts2go.com
+  apiBase?: string;     // Default: https://backend.tts2go.com/api/v1
 });
 ```
 
