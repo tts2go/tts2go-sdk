@@ -1,5 +1,11 @@
 # @tts2go/core
 
+## 0.10.0
+
+### Minor Changes
+
+- Updated examples and documentation
+
 ## 0.9.0
 
 ### Minor Changes
