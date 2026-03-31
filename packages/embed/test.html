@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TTS2Go Embed Test</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 700px; margin: 40px auto; padding: 0 20px; line-height: 1.6; }
+    h1 { border-bottom: 1px solid #ddd; padding-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <h1>TTS2Go Embed Script Test</h1>
+
+  <p>This is a simple paragraph to test basic text-to-speech functionality.</p>
+
+  <p>This paragraph has <strong>bold text</strong> and <em>italic text</em> with <a href="#">a link</a> nested inside it.</p>
+
+  <h2>A Second Heading</h2>
+
+  <p>Short.</p><!-- Should be skipped (too short) -->
+
+  <ul>
+    <li>First list item with enough text to be read aloud by the TTS engine.</li>
+    <li>Second list item, also containing enough text for the speech synthesis.</li>
+  </ul>
+
+  <blockquote>This is a blockquote with enough text to qualify for a TTS button.</blockquote>
+
+  <nav>
+    <p>This paragraph is inside a nav and should be skipped.</p>
+  </nav>
+
+  <div data-tts2go-ignore>
+    <p>This paragraph is inside a data-tts2go-ignore container and should be skipped.</p>
+  </div>
+
+  <h3>Dynamic Content Test</h3>
+  <div id="dynamic"></div>
+  <button onclick="document.getElementById('dynamic').innerHTML = '<p>This paragraph was added dynamically and should get a TTS button via MutationObserver.</p>'">
+    Add Dynamic Content
+  </button>
+
+  <!-- Replace with real credentials to test actual TTS -->
+  <script
+    src="./dist/index.global.js"
+    data-api-key="tts_test_key"
+    data-project-id="test-project-id"
+    data-voice-id="test-voice-id"
+  ></script>
+</body>
+</html>

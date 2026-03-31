@@ -1,0 +1,23 @@
+{
+  "name": "@tts2go/embed",
+  "version": "0.11.0",
+  "main": "dist/index.global.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format iife --global-name TTS2GoEmbed --minify --dts",
+    "dev": "tsup src/index.ts --format iife --global-name TTS2GoEmbed --dts --watch"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@tts2go/core": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.0"
+  }
+}
