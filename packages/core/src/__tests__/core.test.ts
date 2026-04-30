@@ -228,3 +228,97 @@ describe("sdkFetch", () => {
     );
   });
 });
+
+describe("TTS2GoClient.requestOrStream", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns kind=queued when the server responds with JSON", async () => {
+    const mockFetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ id: "req-1", status: "queued" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    const client = new TTS2GoClient({
+      apiKey: "tts_stream",
+      projectId: "proj-s",
+      apiBase: "https://api.test.com",
+    });
+
+    const res = await client.requestOrStream("hello", "voice-1");
+    expect(res.kind).toBe("queued");
+    if (res.kind === "queued") {
+      expect(res.response.status).toBe("queued");
+    }
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://api.test.com/sdk/request",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          Accept: "audio/mpeg, application/json",
+          "X-TTS-Stream": "1",
+        }),
+      })
+    );
+  });
+
+  it("returns kind=stream with a readable body when Content-Type is audio/mpeg", async () => {
+    const audioBytes = new Uint8Array([0xff, 0xfb, 0x90, 0x00]);
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(audioBytes);
+        controller.close();
+      },
+    });
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(body, {
+        status: 200,
+        headers: { "Content-Type": "audio/mpeg" },
+      })
+    );
+
+    const client = new TTS2GoClient({
+      apiKey: "tts_stream",
+      projectId: "proj-s",
+      apiBase: "https://api.test.com",
+    });
+
+    const res = await client.requestOrStream("hello", "voice-1");
+    expect(res.kind).toBe("stream");
+    if (res.kind === "stream") {
+      expect(res.mime).toBe("audio/mpeg");
+      const reader = res.body.getReader();
+      const chunks: Uint8Array[] = [];
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value) chunks.push(value);
+      }
+      const flat = new Uint8Array(chunks.reduce((s, c) => s + c.length, 0));
+      let o = 0;
+      for (const c of chunks) { flat.set(c, o); o += c.length; }
+      expect(Array.from(flat)).toEqual(Array.from(audioBytes));
+    }
+  });
+
+  it("throws on non-2xx responses", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: "forbidden" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    const client = new TTS2GoClient({
+      apiKey: "tts_stream",
+      projectId: "proj-s",
+      apiBase: "https://api.test.com",
+    });
+
+    await expect(client.requestOrStream("x", "v")).rejects.toThrow(/forbidden/);
+  });
+});

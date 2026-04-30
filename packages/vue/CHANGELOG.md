@@ -1,5 +1,16 @@
 # @tts2go/vue
 
+## 1.0.0
+
+### Major Changes
+
+- adds streaming capability for projects that are configured with it
+
+### Patch Changes
+
+- Updated dependencies
+  - @tts2go/core@1.0.0
+
 ## 0.10.0
 
 ### Minor Changes

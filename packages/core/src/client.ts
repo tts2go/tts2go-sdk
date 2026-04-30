@@ -18,6 +18,7 @@ export class TTS2GoClient {
       cdnBase: DEFAULT_CDN_BASE,
       apiBase: DEFAULT_API_BASE,
       hideTTSIfNoFallback: false,
+      streamingWarmupMs: 400,
       ...config,
     };
   }
@@ -45,6 +46,46 @@ export class TTS2GoClient {
         body: JSON.stringify({ content, voice_id: voiceId }),
       }
     );
+  }
+
+  /**
+   * Calls POST /sdk/request signalling streaming readiness. The server may
+   * respond with a queued JSON record (existing behaviour) or a streaming
+   * audio body if the project has streaming enabled for this voice.
+   */
+  async requestOrStream(
+    content: string,
+    voiceId: string
+  ): Promise<
+    | { kind: "queued"; response: RequestResponse }
+    | { kind: "stream"; body: ReadableStream<Uint8Array>; mime: string }
+  > {
+    const res = await fetch(`${this.config.apiBase}/sdk/request`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": this.config.apiKey,
+        Accept: "audio/mpeg, application/json",
+        "X-TTS-Stream": "1",
+      },
+      body: JSON.stringify({ content, voice_id: voiceId }),
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}) as any);
+      throw new Error(body.error || `Request failed: ${res.status}`);
+    }
+
+    const type = res.headers.get("Content-Type") || "";
+    if (type.startsWith("audio/") && res.body) {
+      return { kind: "stream", body: res.body, mime: type };
+    }
+    const response = (await res.json()) as RequestResponse;
+    return { kind: "queued", response };
+  }
+
+  get streamingWarmupMs(): number {
+    return this.config.streamingWarmupMs ?? 400;
   }
 
   async getVoices(): Promise<Voice[]> {

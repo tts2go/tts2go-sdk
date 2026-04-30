@@ -1,6 +1,10 @@
 export { TTS2GoClient } from "./client";
 export { buildCDNUrl, contentHash } from "./cdn";
 export { AudioPlayer } from "./audio";
+export { StreamingAudioPlayer } from "./streamingAudio";
+export type { StreamingAudioOptions } from "./streamingAudio";
+export { handleMiss } from "./handleMiss";
+export type { HandleMissCallbacks, HandleMissResult } from "./handleMiss";
 export { hasSpeechSynthesis, speakFallback, stopFallback } from "./fallback";
 export type { FallbackHandle } from "./fallback";
 export { acquireAudioLock, releaseAudioLock, generateInstanceId } from "./globalAudio";

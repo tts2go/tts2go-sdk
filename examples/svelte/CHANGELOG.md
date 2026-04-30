@@ -1,5 +1,12 @@
 # example-svelte
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @tts2go/svelte@1.0.0
+
 ## 0.1.0
 
 ### Minor Changes

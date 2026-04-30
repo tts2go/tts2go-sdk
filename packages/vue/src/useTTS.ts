@@ -1,10 +1,10 @@
 import { ref, computed, onUnmounted } from "vue";
 import {
   AudioPlayer,
+  StreamingAudioPlayer,
+  handleMiss,
   type TTSStatus,
   type FallbackHandle,
-  hasSpeechSynthesis,
-  speakFallback,
   acquireAudioLock,
   releaseAudioLock,
   generateInstanceId,
@@ -27,6 +27,7 @@ export function useTTS(content: string, voiceId: string) {
   const url = ref<string | null>(null);
   const error = ref<string | null>(null);
   let player: AudioPlayer | null = null;
+  let streamPlayer: StreamingAudioPlayer | null = null;
   let fallbackHandle: FallbackHandle | null = null;
   let mounted = true;
   const instanceId = generateInstanceId();
@@ -34,6 +35,8 @@ export function useTTS(content: string, voiceId: string) {
   function stop() {
     player?.stop();
     player = null;
+    streamPlayer?.stop();
+    streamPlayer = null;
     fallbackHandle?.cancel();
     fallbackHandle = null;
     releaseAudioLock(instanceId);
@@ -44,6 +47,8 @@ export function useTTS(content: string, voiceId: string) {
     mounted = false;
     player?.stop();
     player = null;
+    streamPlayer?.stop();
+    streamPlayer = null;
     fallbackHandle?.cancel();
     fallbackHandle = null;
     releaseAudioLock(instanceId);
@@ -53,6 +58,8 @@ export function useTTS(content: string, voiceId: string) {
     // Stop any existing playback
     player?.stop();
     player = null;
+    streamPlayer?.stop();
+    streamPlayer = null;
     fallbackHandle?.cancel();
     fallbackHandle = null;
 
@@ -72,23 +79,37 @@ export function useTTS(content: string, voiceId: string) {
       player = null;
       url.value = null;
 
-      setTimeout(() => {
-        try { client.request(content, voiceId).catch(() => {}); } catch {}
-      }, 0);
-
-      if (hasSpeechSynthesis()) {
-        status.value = "fallback";
-        fallbackHandle = speakFallback(content, () => {
-          if (mounted) {
-            releaseAudioLock(instanceId);
-            status.value = "idle";
-          }
-        });
-      } else {
-        releaseAudioLock(instanceId);
-        status.value = "error";
-        error.value = "TTS not available";
-      }
+      handleMiss(client, content, voiceId, {
+        onStreamReady: () => { if (mounted) status.value = "loading"; },
+        onPlaybackStarted: () => { if (mounted) status.value = "playing"; },
+        onFallbackStarted: () => { if (mounted) status.value = "fallback"; },
+        onEnded: () => {
+          if (!mounted) return;
+          streamPlayer = null;
+          fallbackHandle = null;
+          releaseAudioLock(instanceId);
+          status.value = "idle";
+        },
+        onError: () => {
+          if (!mounted) return;
+          streamPlayer = null;
+          fallbackHandle = null;
+          releaseAudioLock(instanceId);
+          status.value = "error";
+          error.value = "TTS not available";
+        },
+      }).then((result) => {
+        if (!mounted) return;
+        if (result.kind === "stream" && result.streamPlayer) {
+          streamPlayer = result.streamPlayer;
+        } else if (result.kind === "fallback" && result.fallback) {
+          fallbackHandle = result.fallback;
+        } else if (result.kind === "none") {
+          releaseAudioLock(instanceId);
+          status.value = "error";
+          error.value = "TTS not available";
+        }
+      });
     }
 
     try {
@@ -113,6 +134,9 @@ export function useTTS(content: string, voiceId: string) {
   function pause() {
     if (player?.isPlaying) {
       player.pause();
+      status.value = "paused";
+    } else if (streamPlayer) {
+      streamPlayer.pause();
       status.value = "paused";
     }
   }

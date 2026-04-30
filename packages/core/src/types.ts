@@ -4,6 +4,7 @@ export interface TTS2GoConfig {
   cdnBase?: string;
   apiBase?: string;
   hideTTSIfNoFallback?: boolean;
+  streamingWarmupMs?: number;
 }
 
 export interface Voice {

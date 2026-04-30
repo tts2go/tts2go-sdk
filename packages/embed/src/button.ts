@@ -1,8 +1,8 @@
 import {
   TTS2GoClient,
   AudioPlayer,
-  hasSpeechSynthesis,
-  speakFallback,
+  StreamingAudioPlayer,
+  handleMiss,
   acquireAudioLock,
   releaseAudioLock,
   generateInstanceId,
@@ -88,6 +88,7 @@ export function createTTSButton(
   let status: TTSStatus = "idle";
   let url: string | null = null;
   let player: AudioPlayer | null = null;
+  let streamPlayer: StreamingAudioPlayer | null = null;
   let fallbackHandle: FallbackHandle | null = null;
   const instanceId = generateInstanceId();
 
@@ -102,6 +103,8 @@ export function createTTSButton(
   function stop() {
     player?.stop();
     player = null;
+    streamPlayer?.stop();
+    streamPlayer = null;
     fallbackHandle?.cancel();
     fallbackHandle = null;
     releaseAudioLock(instanceId);
@@ -111,6 +114,8 @@ export function createTTSButton(
   async function play() {
     player?.stop();
     player = null;
+    streamPlayer?.stop();
+    streamPlayer = null;
     fallbackHandle?.cancel();
     fallbackHandle = null;
 
@@ -127,20 +132,32 @@ export function createTTSButton(
       player = null;
       url = null;
 
-      setTimeout(() => {
-        try { client.request(content, voiceId).catch(() => {}); } catch {}
-      }, 0);
-
-      if (hasSpeechSynthesis()) {
-        setStatus("fallback");
-        fallbackHandle = speakFallback(content, () => {
+      handleMiss(client, content, voiceId, {
+        onStreamReady: () => setStatus("loading"),
+        onPlaybackStarted: () => setStatus("playing"),
+        onFallbackStarted: () => setStatus("fallback"),
+        onEnded: () => {
+          streamPlayer = null;
+          fallbackHandle = null;
           releaseAudioLock(instanceId);
           setStatus("idle");
-        });
-      } else {
-        releaseAudioLock(instanceId);
-        setStatus("error");
-      }
+        },
+        onError: () => {
+          streamPlayer = null;
+          fallbackHandle = null;
+          releaseAudioLock(instanceId);
+          setStatus("error");
+        },
+      }).then((result) => {
+        if (result.kind === "stream" && result.streamPlayer) {
+          streamPlayer = result.streamPlayer;
+        } else if (result.kind === "fallback" && result.fallback) {
+          fallbackHandle = result.fallback;
+        } else if (result.kind === "none") {
+          releaseAudioLock(instanceId);
+          setStatus("error");
+        }
+      });
     }
 
     try {

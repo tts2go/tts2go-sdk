@@ -1,8 +1,9 @@
 import {
   TTS2GoClient,
   AudioPlayer,
+  StreamingAudioPlayer,
+  handleMiss,
   hasSpeechSynthesis,
-  speakFallback,
   acquireAudioLock,
   releaseAudioLock,
   generateInstanceId,
@@ -36,6 +37,7 @@ export class TTS2Go {
     let url: string | null = null;
     let error: string | null = null;
     let player: AudioPlayer | null = null;
+    let streamPlayer: StreamingAudioPlayer | null = null;
     let fallbackHandle: FallbackHandle | null = null;
     let destroyed = false;
     const instanceId = generateInstanceId();
@@ -71,23 +73,37 @@ export class TTS2Go {
           player = null;
           url = null;
 
-          setTimeout(() => {
-            try { client.request(content, voiceId).catch(() => {}); } catch {}
-          }, 0);
-
-          if (hasSpeechSynthesis()) {
-            setStatus("fallback");
-            fallbackHandle = speakFallback(content, () => {
-              if (!destroyed) {
-                releaseAudioLock(instanceId);
-                setStatus("idle");
-              }
-            });
-          } else {
-            error = "TTS not available";
-            releaseAudioLock(instanceId);
-            setStatus("error");
-          }
+          handleMiss(client, content, voiceId, {
+            onStreamReady: () => { if (!destroyed) setStatus("loading"); },
+            onPlaybackStarted: () => { if (!destroyed) setStatus("playing"); },
+            onFallbackStarted: () => { if (!destroyed) setStatus("fallback"); },
+            onEnded: () => {
+              if (destroyed) return;
+              streamPlayer = null;
+              fallbackHandle = null;
+              releaseAudioLock(instanceId);
+              setStatus("idle");
+            },
+            onError: () => {
+              if (destroyed) return;
+              streamPlayer = null;
+              fallbackHandle = null;
+              error = "TTS not available";
+              releaseAudioLock(instanceId);
+              setStatus("error");
+            },
+          }).then((result) => {
+            if (destroyed) return;
+            if (result.kind === "stream" && result.streamPlayer) {
+              streamPlayer = result.streamPlayer;
+            } else if (result.kind === "fallback" && result.fallback) {
+              fallbackHandle = result.fallback;
+            } else if (result.kind === "none") {
+              error = "TTS not available";
+              releaseAudioLock(instanceId);
+              setStatus("error");
+            }
+          });
         }
 
         try {
@@ -112,6 +128,8 @@ export class TTS2Go {
       stop() {
         player?.stop();
         player = null;
+        streamPlayer?.stop();
+        streamPlayer = null;
         fallbackHandle?.cancel();
         fallbackHandle = null;
         releaseAudioLock(instanceId);
@@ -122,12 +140,18 @@ export class TTS2Go {
         if (player?.isPlaying) {
           player.pause();
           setStatus("paused");
+        } else if (streamPlayer) {
+          streamPlayer.pause();
+          setStatus("paused");
         }
       },
 
       resume() {
         if (player?.isPaused) {
           player.resume();
+          setStatus("playing");
+        } else if (streamPlayer) {
+          streamPlayer.resume();
           setStatus("playing");
         }
       },

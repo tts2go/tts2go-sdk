@@ -2,8 +2,8 @@ import { writable, derived, type Readable } from "svelte/store";
 import {
   TTS2GoClient,
   AudioPlayer,
-  hasSpeechSynthesis,
-  speakFallback,
+  StreamingAudioPlayer,
+  handleMiss,
   acquireAudioLock,
   releaseAudioLock,
   generateInstanceId,
@@ -25,6 +25,7 @@ export function createTTS(client: TTS2GoClient, content: string, voiceId: string
   const url = writable<string | null>(null);
   const error = writable<string | null>(null);
   let player: AudioPlayer | null = null;
+  let streamPlayer: StreamingAudioPlayer | null = null;
   let fallbackHandle: FallbackHandle | null = null;
   let destroyed = false;
   const instanceId = generateInstanceId();
@@ -32,6 +33,8 @@ export function createTTS(client: TTS2GoClient, content: string, voiceId: string
   function stop() {
     player?.stop();
     player = null;
+    streamPlayer?.stop();
+    streamPlayer = null;
     fallbackHandle?.cancel();
     fallbackHandle = null;
     releaseAudioLock(instanceId);
@@ -42,6 +45,8 @@ export function createTTS(client: TTS2GoClient, content: string, voiceId: string
     // Stop any existing playback
     player?.stop();
     player = null;
+    streamPlayer?.stop();
+    streamPlayer = null;
     fallbackHandle?.cancel();
     fallbackHandle = null;
 
@@ -63,23 +68,37 @@ export function createTTS(client: TTS2GoClient, content: string, voiceId: string
       player = null;
       url.set(null);
 
-      setTimeout(() => {
-        try { client.request(content, voiceId).catch(() => {}); } catch {}
-      }, 0);
-
-      if (hasSpeechSynthesis()) {
-        status.set("fallback");
-        fallbackHandle = speakFallback(content, () => {
-          if (!destroyed) {
-            releaseAudioLock(instanceId);
-            status.set("idle");
-          }
-        });
-      } else {
-        releaseAudioLock(instanceId);
-        status.set("error");
-        error.set("TTS not available");
-      }
+      handleMiss(client, content, voiceId, {
+        onStreamReady: () => { if (!destroyed) status.set("loading"); },
+        onPlaybackStarted: () => { if (!destroyed) status.set("playing"); },
+        onFallbackStarted: () => { if (!destroyed) status.set("fallback"); },
+        onEnded: () => {
+          if (destroyed) return;
+          streamPlayer = null;
+          fallbackHandle = null;
+          releaseAudioLock(instanceId);
+          status.set("idle");
+        },
+        onError: () => {
+          if (destroyed) return;
+          streamPlayer = null;
+          fallbackHandle = null;
+          releaseAudioLock(instanceId);
+          status.set("error");
+          error.set("TTS not available");
+        },
+      }).then((result) => {
+        if (destroyed) return;
+        if (result.kind === "stream" && result.streamPlayer) {
+          streamPlayer = result.streamPlayer;
+        } else if (result.kind === "fallback" && result.fallback) {
+          fallbackHandle = result.fallback;
+        } else if (result.kind === "none") {
+          releaseAudioLock(instanceId);
+          status.set("error");
+          error.set("TTS not available");
+        }
+      });
     }
 
     try {
@@ -104,6 +123,9 @@ export function createTTS(client: TTS2GoClient, content: string, voiceId: string
   function pause() {
     if (player?.isPlaying) {
       player.pause();
+      status.set("paused");
+    } else if (streamPlayer) {
+      streamPlayer.pause();
       status.set("paused");
     }
   }
