@@ -122,15 +122,20 @@ const tts = new TTS2Go({
   projectId: string;    // Your project ID (UUID)
   cdnBase?: string;     // Default: https://cdn.tts2go.com
   apiBase?: string;     // Default: https://backend.tts2go.com/api/v1
+  language?: string;    // Default language, e.g. 'ja' or 'pt-BR' (see Languages)
 });
 ```
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `create(content, voiceId)` | `TTSInstance` | Create a TTS instance (does not auto-play) |
-| `generate(content, voiceId)` | `Promise<TTSInstance>` | Create and play immediately |
+| `create(content, voiceId, options?)` | `TTSInstance` | Create a TTS instance (does not auto-play). `options.language` overrides the config default |
+| `generate(content, voiceId, options?)` | `Promise<TTSInstance>` | Create and play immediately |
 | `getVoices()` | `Promise<Voice[]>` | List available voices |
 | `browserTTSSupported` | `boolean` | Whether browser speech synthesis is available |
+
+**Languages:** set `language` in the config and/or pass `{ language: 'ja' }` to `create()` / `generate()`. Supported codes: `en`, `ar`, `ar-SA`, `ar-AE`, `ar-EG`, `zh`, `fr`, `de`, `hi`, `id`, `it`, `ja`, `ko`, `pt`, `pt-BR`, `pt-PT`, `ru`, `es`, `es-MX`, `es-ES`, `tr`. Unsupported values are omitted with a warning.
+
+> **Note:** language is not part of the cache key. Identical text + voice returns the first generated audio regardless of language, so the first language to generate a given text wins.
 
 ### `TTSInstance`
 

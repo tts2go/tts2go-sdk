@@ -145,14 +145,18 @@ Pre-styled button with animated play/pause/loading icons.
 | `voiceId` | `string` | Yes | — | Voice ID from your dashboard |
 | `className` | `string` | No | — | Additional CSS classes |
 | `size` | `number` | No | `24` | Icon size in pixels |
+| `language` | `string` | No | provider `config.language` | Language code, e.g. `'ja'`, `'pt-BR'` (see [Languages](#languages)) |
 
-### `useTTS(content, voiceId)`
+### `useTTS(content, voiceId, options?)`
 
 Hook for building custom TTS UI.
 
 ```typescript
 const { status, url, error, play, stop, pause } = useTTS(content, voiceId);
+const ja = useTTS('こんにちは', voiceId, { language: 'ja' });
 ```
+
+`options.language` overrides the provider's `config.language`.
 
 | Return | Type | Description |
 |--------|------|-------------|
@@ -171,6 +175,23 @@ Access the underlying `TTS2GoClient` instance for direct API calls.
 const client = useTTS2GoClient();
 const voices = await client.getVoices();
 ```
+
+## Languages
+
+Set a default on the provider and/or override it per button or hook:
+
+```tsx
+<TTS2GoProvider config={{ apiKey, projectId, language: 'es' }}>
+  <TTSButton content="Hola mundo" voiceId={voiceId} />              {/* es */}
+  <TTSButton content="Bonjour" voiceId={voiceId} language="fr" />   {/* fr */}
+</TTS2GoProvider>
+```
+
+Supported codes: `en`, `ar`, `ar-SA`, `ar-AE`, `ar-EG`, `zh`, `fr`, `de`, `hi`, `id`, `it`, `ja`, `ko`, `pt`, `pt-BR`, `pt-PT`, `ru`, `es`, `es-MX`, `es-ES`, `tr`.
+
+Input is case-insensitive and falls back to the base language (`en-US` → `en`). Unsupported values log a warning and are sent without a language (server default: English). The browser fallback voice uses the same language. `SUPPORTED_LANGUAGES`, `LANGUAGE_META` and `resolveLanguage` are re-exported from `@tts2go/core`.
+
+> **Note:** language is not part of the cache key. Identical text + voice returns the first generated audio regardless of language, so the first language to generate a given text wins.
 
 ## How It Works
 

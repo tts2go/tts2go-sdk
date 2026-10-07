@@ -6,6 +6,7 @@ import {
   handleMiss,
   type TTSStatus,
   type FallbackHandle,
+  type TTSRequestOptions,
   acquireAudioLock,
   releaseAudioLock,
   generateInstanceId,
@@ -21,7 +22,14 @@ export interface UseTTSReturn {
   pause: () => void;
 }
 
-export function useTTS(content: string, voiceId: string): UseTTSReturn {
+export type UseTTSOptions = TTSRequestOptions;
+
+/**
+ * @param options.language Language for generation and browser fallback speech
+ *   (overrides the provider config's `language`). Not part of the cache key.
+ */
+export function useTTS(content: string, voiceId: string, options?: UseTTSOptions): UseTTSReturn {
+  const language = options?.language;
   const client = useTTS2GoClient();
   const [status, setStatus] = useState<TTSStatus>("idle");
   const [url, setUrl] = useState<string | null>(null);
@@ -110,7 +118,7 @@ export function useTTS(content: string, voiceId: string): UseTTSReturn {
           setStatus("error");
           setError("TTS not available");
         },
-      }).then((result) => {
+      }, { language }).then((result) => {
         if (!mountedRef.current) return;
         if (result.kind === "stream" && result.streamPlayer) {
           streamRef.current = result.streamPlayer;
@@ -142,7 +150,7 @@ export function useTTS(content: string, voiceId: string): UseTTSReturn {
     } catch {
       handleFailure();
     }
-  }, [client, content, voiceId, url, stop]);
+  }, [client, content, voiceId, language, url, stop]);
 
   const pause = useCallback(() => {
     if (playerRef.current?.isPlaying) {

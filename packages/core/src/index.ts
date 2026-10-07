@@ -10,7 +10,22 @@ export type { FallbackHandle } from "./fallback";
 export { acquireAudioLock, releaseAudioLock, generateInstanceId } from "./globalAudio";
 export { sdkFetch } from "./api";
 export type { APIConfig } from "./api";
-export type { TTS2GoConfig, Voice, CheckResponse, RequestResponse, TTSStatus } from "./types";
+export type {
+  TTS2GoConfig,
+  Voice,
+  CheckResponse,
+  RequestResponse,
+  TTSStatus,
+  TTSRequestOptions,
+  LanguageInput,
+} from "./types";
+export {
+  SUPPORTED_LANGUAGES,
+  LANGUAGE_META,
+  resolveLanguage,
+  isSupportedLanguage,
+} from "./languages";
+export type { TTSLanguage, LanguageMeta } from "./languages";
 
 export function createHash(input: string): string {
   return sha256(input);

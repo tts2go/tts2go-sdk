@@ -2,6 +2,7 @@ import type { TTS2GoClient } from "./client";
 import { StreamingAudioPlayer } from "./streamingAudio";
 import { hasSpeechSynthesis, speakFallback } from "./fallback";
 import type { FallbackHandle } from "./fallback";
+import type { TTSRequestOptions } from "./types";
 
 export interface HandleMissCallbacks {
   onStreamReady?: () => void;
@@ -26,11 +27,16 @@ export async function handleMiss(
   client: TTS2GoClient,
   content: string,
   voiceId: string,
-  callbacks: HandleMissCallbacks = {}
+  callbacks: HandleMissCallbacks = {},
+  opts: TTSRequestOptions = {}
 ): Promise<HandleMissResult> {
+  // Effective language (per-call option, else client default). Used for both
+  // the server request and the browser speech fallback.
+  const language = client.resolveRequestLanguage(opts);
+
   let result: { kind: "queued" | "stream"; body?: ReadableStream<Uint8Array>; mime?: string } | null = null;
   try {
-    const r = await client.requestOrStream(content, voiceId);
+    const r = await client.requestOrStream(content, voiceId, opts);
     if (r.kind === "stream") {
       result = { kind: "stream", body: r.body, mime: r.mime };
     } else {
@@ -53,7 +59,8 @@ export async function handleMiss(
         speakFallback(
           content,
           () => callbacks.onEnded?.(),
-          () => callbacks.onError?.(new Error("speechSynthesis failed"))
+          () => callbacks.onError?.(new Error("speechSynthesis failed")),
+          language
         );
         callbacks.onFallbackStarted?.();
       } else {
@@ -73,7 +80,8 @@ export async function handleMiss(
     const handle = speakFallback(
       content,
       () => callbacks.onEnded?.(),
-      () => callbacks.onError?.(new Error("speechSynthesis failed"))
+      () => callbacks.onError?.(new Error("speechSynthesis failed")),
+      language
     );
     callbacks.onFallbackStarted?.();
     return { kind: "fallback", fallback: handle };

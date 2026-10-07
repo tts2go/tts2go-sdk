@@ -100,6 +100,7 @@ Customize behavior with optional `data-*` attributes on the script tag:
 | `data-selector` | `p, h1, h2, h3, h4, h5, h6, li, blockquote, td, th, figcaption, dt, dd, caption, summary` | CSS selector for text elements to target |
 | `data-min-length` | `15` | Minimum character count for text to get a button |
 | `data-size` | `20` | Button icon size in pixels |
+| `data-language` | — | Default language for pages without `lang` information (see [Languages](#languages)) |
 
 ## How It Works
 
@@ -112,6 +113,29 @@ Customize behavior with optional `data-*` attributes on the script tag:
 4. **Smart playback** — Clicking a button tries to play from the CDN cache first. On a cache miss, it falls back to the browser's built-in speech synthesis while queuing server-side generation for next time.
 
 5. **One at a time** — Only one TTS button can play at a time. Starting a new one automatically stops the previous.
+
+## Languages
+
+Each button works out its language when clicked, in this order:
+
+1. The closest `data-tts-lang` attribute (on the element or an ancestor)
+2. The closest `lang` attribute (e.g. `<article lang="fr">`)
+3. `<html lang>`
+4. The script tag's `data-language`
+
+```html
+<html lang="en">
+  <p>Read in English.</p>
+  <section lang="es"><p>Leído en español.</p></section>
+  <p data-tts-lang="ja">日本語で読み上げます。</p>
+</html>
+```
+
+Because `<html lang>` is checked before `data-language`, the script default only applies on pages without a `lang` attribute. Use `data-tts-lang` to override a page's `lang`.
+
+Supported codes: `en`, `ar`, `ar-SA`, `ar-AE`, `ar-EG`, `zh`, `fr`, `de`, `hi`, `id`, `it`, `ja`, `ko`, `pt`, `pt-BR`, `pt-PT`, `ru`, `es`, `es-MX`, `es-ES`, `tr`. Values are case-insensitive and fall back to the base language (`en-US` → `en`). Unsupported values (e.g. `lang="nl"`) are sent without a language, and the server uses its default (English).
+
+> **Note:** language is not part of the cache key. Identical text + voice returns the first generated audio regardless of language, so the first language to generate a given text wins.
 
 ## Skipping Content
 

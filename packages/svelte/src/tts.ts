@@ -8,7 +8,9 @@ import {
   releaseAudioLock,
   generateInstanceId,
 } from "@tts2go/core";
-import type { TTS2GoConfig, TTSStatus, FallbackHandle } from "@tts2go/core";
+import type { TTS2GoConfig, TTSStatus, FallbackHandle, TTSRequestOptions } from "@tts2go/core";
+
+export type CreateTTSOptions = TTSRequestOptions;
 
 export interface TTSStore {
   status: Readable<TTSStatus>;
@@ -20,7 +22,16 @@ export interface TTSStore {
   destroy: () => void;
 }
 
-export function createTTS(client: TTS2GoClient, content: string, voiceId: string): TTSStore {
+/**
+ * @param options.language Language for generation and browser fallback speech
+ *   (overrides the client config's `language`). Not part of the cache key.
+ */
+export function createTTS(
+  client: TTS2GoClient,
+  content: string,
+  voiceId: string,
+  options: CreateTTSOptions = {}
+): TTSStore {
   const status = writable<TTSStatus>("idle");
   const url = writable<string | null>(null);
   const error = writable<string | null>(null);
@@ -87,7 +98,7 @@ export function createTTS(client: TTS2GoClient, content: string, voiceId: string
           status.set("error");
           error.set("TTS not available");
         },
-      }).then((result) => {
+      }, { language: options.language }).then((result) => {
         if (destroyed) return;
         if (result.kind === "stream" && result.streamPlayer) {
           streamPlayer = result.streamPlayer;

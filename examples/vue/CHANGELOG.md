@@ -1,5 +1,12 @@
 # example-vue
 
+## 0.1.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @tts2go/vue@1.1.0
+
 ## 0.1.1
 
 ### Patch Changes

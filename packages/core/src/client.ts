@@ -1,16 +1,44 @@
-import type { TTS2GoConfig, CheckResponse, RequestResponse, Voice, TTSStatus } from "./types";
+import type {
+  TTS2GoConfig,
+  CheckResponse,
+  RequestResponse,
+  Voice,
+  TTSStatus,
+  TTSRequestOptions,
+} from "./types";
 import { buildCDNUrl } from "./cdn";
 import { sdkFetch } from "./api";
+import { resolveLanguage, type TTSLanguage } from "./languages";
 
 const DEFAULT_CDN_BASE = "https://cdn.tts2go.com";
 const DEFAULT_API_BASE = "https://backend.tts2go.com/api/v1";
+
+const warnedLanguages = new Set<string>();
+
+function warnUnsupportedLanguage(value: string): void {
+  if (warnedLanguages.has(value)) return;
+  warnedLanguages.add(value);
+  if (typeof console !== "undefined") {
+    console.warn(
+      `[tts2go] Unsupported language "${value}" — sending the request without a language. ` +
+        `See SUPPORTED_LANGUAGES in @tts2go/core for the accepted codes.`
+    );
+  }
+}
+
+/** @internal test helper: forget which unsupported values were already warned about. */
+export function _resetLanguageWarnings(): void {
+  warnedLanguages.clear();
+}
+
+type ResolvedConfig = Required<Omit<TTS2GoConfig, "language">> & Pick<TTS2GoConfig, "language">;
 
 type EventMap = {
   statusChange: TTSStatus;
 };
 
 export class TTS2GoClient {
-  private config: Required<TTS2GoConfig>;
+  private config: ResolvedConfig;
   private listeners: Map<keyof EventMap, Set<(value: any) => void>> = new Map();
 
   constructor(config: TTS2GoConfig) {
@@ -37,13 +65,39 @@ export class TTS2GoClient {
     }
   }
 
-  async request(content: string, voiceId: string): Promise<RequestResponse> {
+  /**
+   * The effective language for a call: the per-call option, else the client
+   * default, resolved to a supported code. Unsupported values warn once and
+   * resolve to `undefined` (the request is sent without a language).
+   */
+  resolveRequestLanguage(opts?: TTSRequestOptions): TTSLanguage | undefined {
+    // An empty per-call value (e.g. an empty attribute) means "not set".
+    const raw = opts?.language || this.config.language;
+    if (!raw) return undefined;
+    const resolved = resolveLanguage(raw);
+    if (!resolved) warnUnsupportedLanguage(String(raw));
+    return resolved;
+  }
+
+  /** Builds the /sdk/request body. `language` is only present when set. */
+  private requestBody(content: string, voiceId: string, opts?: TTSRequestOptions): string {
+    const language = this.resolveRequestLanguage(opts);
+    return JSON.stringify(
+      language ? { content, voice_id: voiceId, language } : { content, voice_id: voiceId }
+    );
+  }
+
+  async request(
+    content: string,
+    voiceId: string,
+    opts?: TTSRequestOptions
+  ): Promise<RequestResponse> {
     return sdkFetch<RequestResponse>(
       { apiBase: this.config.apiBase, apiKey: this.config.apiKey },
       "/sdk/request",
       {
         method: "POST",
-        body: JSON.stringify({ content, voice_id: voiceId }),
+        body: this.requestBody(content, voiceId, opts),
       }
     );
   }
@@ -55,7 +109,8 @@ export class TTS2GoClient {
    */
   async requestOrStream(
     content: string,
-    voiceId: string
+    voiceId: string,
+    opts?: TTSRequestOptions
   ): Promise<
     | { kind: "queued"; response: RequestResponse }
     | { kind: "stream"; body: ReadableStream<Uint8Array>; mime: string }
@@ -68,7 +123,7 @@ export class TTS2GoClient {
         Accept: "audio/mpeg, application/json",
         "X-TTS-Stream": "1",
       },
-      body: JSON.stringify({ content, voice_id: voiceId }),
+      body: this.requestBody(content, voiceId, opts),
     });
 
     if (!res.ok) {
@@ -112,6 +167,11 @@ export class TTS2GoClient {
 
   get projectId(): string {
     return this.config.projectId;
+  }
+
+  /** The client's default language, resolved to a supported code (if any). */
+  get language(): TTSLanguage | undefined {
+    return resolveLanguage(this.config.language);
   }
 
   get hideTTSIfNoFallback(): boolean {

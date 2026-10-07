@@ -19,7 +19,10 @@ function init() {
     return;
   }
 
-  const client = new TTS2GoClient({ apiKey, projectId });
+  // data-language is the default; per-element data-tts-lang / lang attributes
+  // (resolved at play time) override it.
+  const language = script.dataset.language || undefined;
+  const client = new TTS2GoClient({ apiKey, projectId, language });
 
   const opts: ScannerOptions = {
     client,

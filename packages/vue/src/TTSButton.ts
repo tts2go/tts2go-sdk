@@ -8,10 +8,11 @@ export default defineComponent({
     voiceId: { type: String, required: true },
     className: { type: String, default: "" },
     size: { type: Number, default: 24 },
+    language: { type: String, default: undefined },
   },
   setup(props) {
     const { client, browserTTSSupported } = useTTS2GoContext();
-    const { status, play, stop } = useTTS(props.content, props.voiceId);
+    const { status, play, stop } = useTTS(props.content, props.voiceId, { language: props.language });
 
     const iconSize = computed(() => props.size);
 

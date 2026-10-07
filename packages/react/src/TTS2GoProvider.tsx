@@ -13,7 +13,7 @@ const TTS2GoContext = createContext<TTS2GoContextValue | null>(null);
 export function TTS2GoProvider({ config, children }: { config: TTS2GoConfig; children: ReactNode }) {
   const client = useMemo(
     () => new TTS2GoClient(config),
-    [config.apiKey, config.projectId, config.cdnBase, config.apiBase]
+    [config.apiKey, config.projectId, config.cdnBase, config.apiBase, config.language]
   );
   const browserTTSSupported = useMemo(() => hasSpeechSynthesis(), []);
   const value = useMemo(() => ({ client, browserTTSSupported }), [client, browserTTSSupported]);

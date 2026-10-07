@@ -147,16 +147,22 @@ const client = createTTS2GoClient({
   projectId: string;    // Your project ID
   cdnBase?: string;     // Default: https://cdn.tts2go.com
   apiBase?: string;     // Default: https://backend.tts2go.com/api/v1
+  language?: string;    // Default language, e.g. 'ja' or 'pt-BR' (see Languages)
 });
 ```
 
-### `createTTS(client, content, voiceId)`
+### `createTTS(client, content, voiceId, options?)`
 
 Creates a reactive TTS store for a piece of content.
 
 ```typescript
 const { status, url, error, play, stop, pause, destroy } = createTTS(client, content, voiceId);
+const de = createTTS(client, 'Hallo Welt', voiceId, { language: 'de' });
 ```
+
+`options.language` overrides the client's `language`. Supported codes: `en`, `ar`, `ar-SA`, `ar-AE`, `ar-EG`, `zh`, `fr`, `de`, `hi`, `id`, `it`, `ja`, `ko`, `pt`, `pt-BR`, `pt-PT`, `ru`, `es`, `es-MX`, `es-ES`, `tr`. Unsupported values are omitted with a warning.
+
+> **Note:** language is not part of the cache key. Identical text + voice returns the first generated audio regardless of language, so the first language to generate a given text wins.
 
 | Return | Type | Description |
 |--------|------|-------------|
@@ -182,6 +188,7 @@ const button = createTTSButton({
   target: HTMLElement;     // Required - mount target
   className?: string;      // Optional CSS classes
   size?: number;           // Optional icon size (default: 24)
+  language?: string;       // Optional language (overrides client default)
 });
 
 // Clean up when done

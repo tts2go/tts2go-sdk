@@ -8,6 +8,8 @@ export interface TTSButtonProps {
   voiceId: string;
   className?: string;
   size?: number;
+  /** Language for generation and browser fallback (overrides provider config). */
+  language?: string;
 }
 
 const baseStyle: CSSProperties = {
@@ -118,9 +120,9 @@ function getAriaLabel(status: string): string {
   }
 }
 
-export function TTSButton({ content, voiceId, className, size = 24 }: TTSButtonProps) {
+export function TTSButton({ content, voiceId, className, size = 24, language }: TTSButtonProps) {
   const { client, browserTTSSupported } = useTTS2GoContext();
-  const { status, play, stop, pause } = useTTS(content, voiceId);
+  const { status, play, stop, pause } = useTTS(content, voiceId, { language });
 
   if (client.hideTTSIfNoFallback && !browserTTSSupported) {
     return null;

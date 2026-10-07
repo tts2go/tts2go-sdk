@@ -65,6 +65,7 @@ const props = withDefaults(
     voiceId: string;
     className?: string;
     size?: number;
+    language?: string;
   }>(),
   {
     className: "",
@@ -74,7 +75,7 @@ const props = withDefaults(
 
 const iconSize = computed(() => props.size);
 
-const { status, play, stop } = useTTS(props.content, props.voiceId);
+const { status, play, stop } = useTTS(props.content, props.voiceId, { language: props.language });
 
 const buttonStyle = computed(() => ({
   display: "inline-flex",

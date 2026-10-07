@@ -16,6 +16,24 @@ export interface ScannerOptions {
   size?: number;
 }
 
+/**
+ * The language for an element, read at play time so SPA locale switches are
+ * picked up: the closest `data-tts-lang` (self or ancestor), else the closest
+ * `lang` attribute, else `<html lang>`. Returns undefined when none is set, in
+ * which case the client default (the script tag's `data-language`) applies.
+ * Values are resolved/validated by the core client.
+ */
+export function resolveElementLanguage(el: Element): string | undefined {
+  const explicit = el.closest("[data-tts-lang]")?.getAttribute("data-tts-lang")?.trim();
+  if (explicit) return explicit;
+
+  const inherited = el.closest("[lang]")?.getAttribute("lang")?.trim();
+  if (inherited) return inherited;
+
+  const root = el.ownerDocument?.documentElement?.lang?.trim();
+  return root || undefined;
+}
+
 function isHidden(el: HTMLElement): boolean {
   return el.offsetParent === null && el.tagName !== "BODY" && el.tagName !== "HTML";
 }
@@ -33,7 +51,9 @@ function processElement(el: HTMLElement, opts: ScannerOptions): void {
   if (hasSkipAncestor(el)) return;
 
   el.setAttribute(PROCESSED_ATTR, "");
-  const btn = createTTSButton(opts.client, text, opts.voiceId, opts.size ?? 20);
+  const btn = createTTSButton(opts.client, text, opts.voiceId, opts.size ?? 20, () =>
+    resolveElementLanguage(el)
+  );
   el.appendChild(btn);
 }
 

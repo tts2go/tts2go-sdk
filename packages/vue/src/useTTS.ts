@@ -5,6 +5,7 @@ import {
   handleMiss,
   type TTSStatus,
   type FallbackHandle,
+  type TTSRequestOptions,
   acquireAudioLock,
   releaseAudioLock,
   generateInstanceId,
@@ -20,7 +21,13 @@ export function useTTS2GoContext(): TTS2GoContext {
   return ctx;
 }
 
-export function useTTS(content: string, voiceId: string) {
+export type UseTTSOptions = TTSRequestOptions;
+
+/**
+ * @param options.language Language for generation and browser fallback speech
+ *   (overrides the plugin config's `language`). Not part of the cache key.
+ */
+export function useTTS(content: string, voiceId: string, options: UseTTSOptions = {}) {
   const { client } = useTTS2GoContext();
 
   const status = ref<TTSStatus>("idle");
@@ -98,7 +105,7 @@ export function useTTS(content: string, voiceId: string) {
           status.value = "error";
           error.value = "TTS not available";
         },
-      }).then((result) => {
+      }, { language: options.language }).then((result) => {
         if (!mounted) return;
         if (result.kind === "stream" && result.streamPlayer) {
           streamPlayer = result.streamPlayer;

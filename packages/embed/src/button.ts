@@ -79,6 +79,7 @@ export function createTTSButton(
   content: string,
   voiceId: string,
   size: number,
+  getLanguage: () => string | undefined = () => undefined,
 ): HTMLButtonElement {
   const btn = document.createElement("button");
   btn.type = "button";
@@ -148,7 +149,7 @@ export function createTTSButton(
           releaseAudioLock(instanceId);
           setStatus("error");
         },
-      }).then((result) => {
+      }, { language: getLanguage() }).then((result) => {
         if (result.kind === "stream" && result.streamPlayer) {
           streamPlayer = result.streamPlayer;
         } else if (result.kind === "fallback" && result.fallback) {

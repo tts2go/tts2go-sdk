@@ -110,15 +110,47 @@ const client = new TTS2GoClient({
   projectId: string;    // Your project ID (UUID)
   cdnBase?: string;     // Default: https://cdn.tts2go.com
   apiBase?: string;     // Default: https://backend.tts2go.com/api/v1
+  language?: string;    // Default language, e.g. 'ja' or 'pt-BR' (see Languages)
 });
 ```
 
 | Method | Returns | Description |
 |--------|---------|-------------|
 | `check(content, voiceId)` | `Promise<CheckResponse>` | Check if audio exists on CDN |
-| `request(content, voiceId)` | `Promise<RequestResponse>` | Queue content for TTS generation |
+| `request(content, voiceId, opts?)` | `Promise<RequestResponse>` | Queue content for TTS generation. `opts.language` overrides the config default |
+| `requestOrStream(content, voiceId, opts?)` | `Promise<{ kind: 'queued' \| 'stream', … }>` | Like `request()`, but may return a streaming audio body |
 | `getVoices()` | `Promise<Voice[]>` | List available voices |
 | `getCDNUrl(content, voiceId)` | `string` | Generate deterministic CDN URL |
+
+### Languages
+
+Pass a language as a client default and/or per call. Supported codes:
+
+`en`, `ar`, `ar-SA`, `ar-AE`, `ar-EG`, `zh`, `fr`, `de`, `hi`, `id`, `it`, `ja`, `ko`, `pt`, `pt-BR`, `pt-PT`, `ru`, `es`, `es-MX`, `es-ES`, `tr`
+
+```typescript
+import { TTS2GoClient, SUPPORTED_LANGUAGES, LANGUAGE_META, resolveLanguage } from '@tts2go/core';
+
+const client = new TTS2GoClient({ apiKey, projectId, language: 'ja' });
+
+await client.request('こんにちは', voiceId);                    // language: "ja"
+await client.request('Olá', voiceId, { language: 'pt-BR' });    // per-call override wins
+
+resolveLanguage('en-US');      // "en"     (falls back to the base language)
+resolveLanguage('PT_br');      // "pt-BR"  (case-insensitive, `_` accepted)
+resolveLanguage('zh-Hant-TW'); // "zh"
+resolveLanguage('nl');         // undefined (unsupported)
+
+LANGUAGE_META['ar-SA'];        // { base: 'ar', name, nativeName, bcp47: 'ar-SA', dir: 'rtl' }
+```
+
+- The effective language is the per-call `opts.language`, else `config.language`, resolved with `resolveLanguage()`.
+- `language` is only added to the request body when it resolves. Without one, requests are identical to previous versions and the server uses its default (English).
+- An unsupported value logs a one-time `console.warn` and the request is sent without a language.
+- The browser speech fallback (`speakFallback`, `handleMiss`) sets `utterance.lang` and picks a matching installed voice when one exists.
+- The list also ships as JSON: `import languages from '@tts2go/core/languages.json'`.
+
+> **Note:** language is not part of the cache key. Identical text + voice returns the first generated audio regardless of language, so the first language to generate a given text wins.
 
 ### `AudioPlayer`
 
@@ -152,7 +184,7 @@ player.stop();
 import { hasSpeechSynthesis, speakFallback, stopFallback } from '@tts2go/core';
 
 if (hasSpeechSynthesis()) {
-  const handle = speakFallback('Hello world', onEnd, onError);
+  const handle = speakFallback('Hello world', onEnd, onError, 'en'); // language is optional
   // handle.cancel() to stop early
 }
 ```
@@ -176,7 +208,14 @@ interface TTS2GoConfig {
   cdnBase?: string;
   apiBase?: string;
   hideTTSIfNoFallback?: boolean;
+  language?: TTSLanguage | string;
 }
+
+interface TTSRequestOptions {
+  language?: TTSLanguage | string;
+}
+
+type TTSLanguage = 'en' | 'ar' | 'ar-SA' | /* … */ 'tr'; // see SUPPORTED_LANGUAGES
 
 interface Voice {
   id: string;

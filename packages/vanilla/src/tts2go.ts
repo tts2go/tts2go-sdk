@@ -8,7 +8,9 @@ import {
   releaseAudioLock,
   generateInstanceId,
 } from "@tts2go/core";
-import type { TTS2GoConfig, TTSStatus, Voice, FallbackHandle } from "@tts2go/core";
+import type { TTS2GoConfig, TTSStatus, Voice, FallbackHandle, TTSRequestOptions } from "@tts2go/core";
+
+export type TTSCreateOptions = TTSRequestOptions;
 
 export interface TTSInstance {
   play: () => Promise<void>;
@@ -29,8 +31,11 @@ export class TTS2Go {
     this.client = new TTS2GoClient(config);
   }
 
-  /** Create a TTS instance bound to specific content and voice */
-  create(content: string, voiceId: string): TTSInstance {
+  /**
+   * Create a TTS instance bound to specific content and voice.
+   * `options.language` overrides the config's default `language`.
+   */
+  create(content: string, voiceId: string, options: TTSCreateOptions = {}): TTSInstance {
     const client = this.client;
 
     let status: TTSStatus = "idle";
@@ -92,7 +97,7 @@ export class TTS2Go {
               releaseAudioLock(instanceId);
               setStatus("error");
             },
-          }).then((result) => {
+          }, { language: options.language }).then((result) => {
             if (destroyed) return;
             if (result.kind === "stream" && result.streamPlayer) {
               streamPlayer = result.streamPlayer;
@@ -180,8 +185,8 @@ export class TTS2Go {
   }
 
   /** One-shot: generate and play audio immediately */
-  async generate(content: string, voiceId: string): Promise<TTSInstance> {
-    const instance = this.create(content, voiceId);
+  async generate(content: string, voiceId: string, options: TTSCreateOptions = {}): Promise<TTSInstance> {
+    const instance = this.create(content, voiceId, options);
     await instance.play();
     return instance;
   }

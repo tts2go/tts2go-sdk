@@ -133,6 +133,7 @@ app.use(TTS2GoPlugin, {
   projectId: string;    // Your project ID
   cdnBase?: string;     // Default: https://cdn.tts2go.com
   apiBase?: string;     // Default: https://backend.tts2go.com/api/v1
+  language?: string;    // Default language, e.g. 'ja' or 'pt-BR' (see Languages)
 });
 ```
 
@@ -146,14 +147,20 @@ Pre-styled button component with animated play/pause/loading icons.
 | `voice-id` | `string` | Yes | — | Voice ID from your dashboard |
 | `class` | `string` | No | — | Additional CSS classes |
 | `size` | `number` | No | `24` | Icon size in pixels |
+| `language` | `string` | No | plugin `language` | Language code, e.g. `'ja'`, `'pt-BR'` |
 
-### `useTTS(content, voiceId)`
+### `useTTS(content, voiceId, options?)`
 
 Composable for building custom TTS UI.
 
 ```typescript
 const { status, url, error, play, stop, pause } = useTTS(content, voiceId);
+const fr = useTTS('Bonjour', voiceId, { language: 'fr' });
 ```
+
+`options.language` overrides the plugin's `language`. Supported codes: `en`, `ar`, `ar-SA`, `ar-AE`, `ar-EG`, `zh`, `fr`, `de`, `hi`, `id`, `it`, `ja`, `ko`, `pt`, `pt-BR`, `pt-PT`, `ru`, `es`, `es-MX`, `es-ES`, `tr`. Unsupported values are omitted with a warning.
+
+> **Note:** language is not part of the cache key. Identical text + voice returns the first generated audio regardless of language, so the first language to generate a given text wins.
 
 | Return | Type | Description |
 |--------|------|-------------|

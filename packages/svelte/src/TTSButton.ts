@@ -7,6 +7,8 @@ export interface TTSButtonOptions {
   voiceId: string;
   className?: string;
   size?: number;
+  /** Language for generation and browser fallback (overrides client config). */
+  language?: string;
   target: HTMLElement;
 }
 
@@ -84,8 +86,8 @@ function getAriaLabel(status: TTSStatus): string {
 }
 
 export function createTTSButton(options: TTSButtonOptions): { destroy: () => void } {
-  const { client, content, voiceId, className, size = 24, target } = options;
-  const tts = createTTS(client, content, voiceId);
+  const { client, content, voiceId, className, size = 24, target, language } = options;
+  const tts = createTTS(client, content, voiceId, { language });
 
   const button = document.createElement("button");
   button.type = "button";

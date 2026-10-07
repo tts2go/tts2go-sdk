@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "languages": [
+    { "code": "en",    "base": "en", "grok": "en",    "name": "English",                  "nativeName": "English",            "dir": "ltr" },
+    { "code": "ar",    "base": "ar", "grok": "ar-SA", "name": "Arabic",                   "nativeName": "العربية",            "dir": "rtl" },
+    { "code": "ar-SA", "base": "ar", "grok": "ar-SA", "name": "Arabic (Saudi Arabia)",    "nativeName": "العربية (السعودية)", "dir": "rtl" },
+    { "code": "ar-AE", "base": "ar", "grok": "ar-AE", "name": "Arabic (UAE)",             "nativeName": "العربية (الإمارات)", "dir": "rtl" },
+    { "code": "ar-EG", "base": "ar", "grok": "ar-EG", "name": "Arabic (Egypt)",           "nativeName": "العربية (مصر)",      "dir": "rtl" },
+    { "code": "zh",    "base": "zh", "grok": "zh",    "name": "Chinese (Simplified)",     "nativeName": "简体中文",            "dir": "ltr" },
+    { "code": "fr",    "base": "fr", "grok": "fr",    "name": "French",                   "nativeName": "Français",           "dir": "ltr" },
+    { "code": "de",    "base": "de", "grok": "de",    "name": "German",                   "nativeName": "Deutsch",            "dir": "ltr" },
+    { "code": "hi",    "base": "hi", "grok": "hi",    "name": "Hindi",                    "nativeName": "हिन्दी",               "dir": "ltr" },
+    { "code": "id",    "base": "id", "grok": "id",    "name": "Indonesian",               "nativeName": "Bahasa Indonesia",   "dir": "ltr" },
+    { "code": "it",    "base": "it", "grok": "it",    "name": "Italian",                  "nativeName": "Italiano",           "dir": "ltr" },
+    { "code": "ja",    "base": "ja", "grok": "ja",    "name": "Japanese",                 "nativeName": "日本語",              "dir": "ltr" },
+    { "code": "ko",    "base": "ko", "grok": "ko",    "name": "Korean",                   "nativeName": "한국어",              "dir": "ltr" },
+    { "code": "pt",    "base": "pt", "grok": "pt-BR", "name": "Portuguese",               "nativeName": "Português",          "dir": "ltr" },
+    { "code": "pt-BR", "base": "pt", "grok": "pt-BR", "name": "Portuguese (Brazil)",      "nativeName": "Português (Brasil)", "dir": "ltr" },
+    { "code": "pt-PT", "base": "pt", "grok": "pt-PT", "name": "Portuguese (Portugal)",    "nativeName": "Português (Portugal)", "dir": "ltr" },
+    { "code": "ru",    "base": "ru", "grok": "ru",    "name": "Russian",                  "nativeName": "Русский",            "dir": "ltr" },
+    { "code": "es",    "base": "es", "grok": "es-ES", "name": "Spanish",                  "nativeName": "Español",            "dir": "ltr" },
+    { "code": "es-MX", "base": "es", "grok": "es-MX", "name": "Spanish (Mexico)",         "nativeName": "Español (México)",   "dir": "ltr" },
+    { "code": "es-ES", "base": "es", "grok": "es-ES", "name": "Spanish (Spain)",          "nativeName": "Español (España)",   "dir": "ltr" },
+    { "code": "tr",    "base": "tr", "grok": "tr",    "name": "Turkish",                  "nativeName": "Türkçe",             "dir": "ltr" }
+  ]
+}
